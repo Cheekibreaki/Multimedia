@@ -19,7 +19,7 @@ function processYUV(filename, width, height, numFrames)
         fclose(fidY);
         
         % Process with block sizes 2x2, 8x8, 64x64
-        blockSizes = [8];
+        blockSizes = [2,8,64];
         for blockSize = blockSizes
             processYBlock(Y, blockSize, width, height, frameIdx);
         end

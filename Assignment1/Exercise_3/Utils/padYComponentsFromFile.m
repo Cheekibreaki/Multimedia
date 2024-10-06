@@ -1,4 +1,4 @@
-function padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile)
+function [paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile)
     % Parameters:
     % outputFile - path to the Y-only file that contains all Y components
     % numFrames - number of Y-only frames to process
@@ -16,7 +16,7 @@ function padYComponentsFromFile(outputFile, numFrames, width, height, blockSize,
         % Read the Y component of the current frame
         Y = fread(fidY, [width, height], 'uint8')';
        
-        paddedY = padFrame(Y, width, height, blockSize);
+        [paddedY,paddedWidth,paddedHeight] = padFrame(Y, width, height, blockSize);
        
         fwrite(fidPadded, paddedY', 'uint8');                
         
@@ -30,7 +30,7 @@ end
 
 
 
-function [paddedY] = padFrame(Y, width, height, blockSize)
+function [paddedY,paddedWidth,paddedHeight] = padFrame(Y, width, height, blockSize)
     % Pad the frame with gray (128) if necessary to make it divisible by blockSize
     padRight = mod(width, blockSize);
     padBottom = mod(height, blockSize);
@@ -41,9 +41,12 @@ function [paddedY] = padFrame(Y, width, height, blockSize)
     if padBottom ~= 0
         padBottom = blockSize - padBottom;
     end
+    
+    paddedWidth = width + padRight;
+    paddedHeight = height + padBottom;
 
     % Pad the frame on the right and bottom with 128 (gray)
-    paddedY = padarray(Y, [padBottom, padRight], 128, 'post');
+    paddedY = padarray(Y, [padRight, padBottom], 128, 'post');
 
 end
 

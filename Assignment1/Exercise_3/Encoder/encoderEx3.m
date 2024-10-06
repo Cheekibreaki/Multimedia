@@ -68,7 +68,7 @@ function encoderEx3(filename, numFrames, width, height, blockSize, searchRange)
         
         figure;
         
-        % 1. Display the reference (previous) frame
+         % 1. Display the reference (previous) frame
         subplot(2, 3, 1);
         imshow(referenceFrame, []);
         title('Previous Frame');
@@ -92,6 +92,8 @@ function encoderEx3(filename, numFrames, width, height, blockSize, searchRange)
         subplot(2, 3, 5);
         imshow(predictedFrame, []);
         title('Predicted Frame');
+    
+       
         
     end
     
