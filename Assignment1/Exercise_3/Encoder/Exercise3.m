@@ -20,4 +20,6 @@ dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
 % encoder
 encoderEx3(paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange)
 
+decoderEx3(numFrames, paddedWidth, paddedHeight, blockSize, searchRange)
 %decoder
+compareYUVFrames('../Outputs/Y_only_foreman.yuv', '../Outputs/decoded_Y_foreman.yuv', 352, 288, 10);

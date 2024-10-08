@@ -45,10 +45,10 @@ function encoderEx3(filename, numFrames, width, height, blockSize, searchRange)
         approximatedResiduals = round(residuals/roundingFactor) * roundingFactor;
     
         % % Save motion vectors and approximated residuals for this frame
-        % motionVectorFile = sprintf('../Outputs/motionVectors_frame_%d.mat', frameIdx);
-        % residualFile = sprintf('../Outputs/approximatedResiduals_frame_%d.mat', frameIdx);
-        % save(motionVectorFile, 'motionVectors');
-        % save(residualFile, 'approximatedResiduals');
+        motionVectorFile = sprintf('../Outputs/motionVectors_frame_%d.mat', frameIdx);
+        residualFile = sprintf('../Outputs/approximatedResiduals_frame_%d.mat', frameIdx);
+        save(motionVectorFile, 'motionVectors');
+        save(residualFile, 'approximatedResiduals');
     
         % Reconstruct the frame at the encoder side to create a closed loop 
         % Use it as the reference frame for the next frame
@@ -66,32 +66,32 @@ function encoderEx3(filename, numFrames, width, height, blockSize, searchRange)
         
         % Create a figure with subplots to visualize each frame
         
-        figure;
-        
-         % 1. Display the reference (previous) frame
-        subplot(2, 3, 1);
-        imshow(referenceFrame, []);
-        title('Previous Frame');
-        
-        % 2. Display the absolute residual before motion compensation
-        subplot(2, 3, 2);
-        imshow(residualBefore, []);
-        title('Residual Before');
-        
-        % 3. Display the absolute residual after motion compensation
-        subplot(2, 3, 3);
-        imshow(residualAfter, []);
-        title('Residual After');
-        
-        % 4. Display the source frame (current frame to encode)
-        subplot(2, 3, 4);
-        imshow(currentFrame, []);
-        title('Source Frame');
-        
-        % 5. Display the predicted frame after motion compensation
-        subplot(2, 3, 5);
-        imshow(predictedFrame, []);
-        title('Predicted Frame');
+        % figure;
+        % 
+        %  % 1. Display the reference (previous) frame
+        % subplot(2, 3, 1);
+        % imshow(referenceFrame, []);
+        % title('Previous Frame');
+        % 
+        % % 2. Display the absolute residual before motion compensation
+        % subplot(2, 3, 2);
+        % imshow(residualBefore, []);
+        % title('Residual Before');
+        % 
+        % % 3. Display the absolute residual after motion compensation
+        % subplot(2, 3, 3);
+        % imshow(residualAfter, []);
+        % title('Residual After');
+        % 
+        % % 4. Display the source frame (current frame to encode)
+        % subplot(2, 3, 4);
+        % imshow(currentFrame, []);
+        % title('Source Frame');
+        % 
+        % % 5. Display the predicted frame after motion compensation
+        % subplot(2, 3, 5);
+        % imshow(predictedFrame, []);
+        % title('Predicted Frame');
     
        
         
