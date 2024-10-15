@@ -1,6 +1,0 @@
-Width: 352
-Height: 288
-BlockSize: 8
-SearchRange: 8
-QP: 4
-NumFrames: 10
