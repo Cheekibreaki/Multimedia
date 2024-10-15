@@ -13,7 +13,8 @@ for frameIdx = 1:numFrames
     isIFrame = (frameIdx == 1 || mod(frameIdx - 1, I_Period) == 0);
     if isIFrame
         fprintf('Processing I-frame\n');
-        predictedFrame = intraPrediction(referenceFrame, blockSize);
+        load(sprintf('../Outputs/motionVectors_frame_%d.mat', frameIdx), 'motionVectors');
+        predictedFrame = intraCompensation(referenceFrame, blockSize);
     else
         fprintf('Processing P-frame\n');
         % Load motion vectors and perform motion compensation
