@@ -1,4 +1,4 @@
-function compareYUVFrames(originalFile, decodedFile, width, height, numFrames)
+function compareYUVFrames(referenceFile, originalFile, decodedFile, width, height, numFrames)
     % compareYUVFrames: This function compares frames from the original
     % YUV file and the decoded YUV file by displaying them side-by-side.
     %
@@ -10,27 +10,30 @@ function compareYUVFrames(originalFile, decodedFile, width, height, numFrames)
     %   numFrames    - Number of frames to compare
 
     % Open the original and decoded files for reading
-    fidOriginal = fopen(originalFile, 'r');
+    fidReference = fopen(referenceFile, 'r');
     fidDecoded = fopen(decodedFile, 'r');
+    
+    fread(fidReference, [width, height], 'uint8')';
 
     % Iterate through each frame to compare
     for frameIdx = 1:numFrames
         % Read the Y component of the original frame
-        originalFrame = fread(fidOriginal, [width, height], 'uint8')';
+        
+        refFrame = fread(fidReference, [width, height], 'uint8')';
         
         % Read the Y component of the decoded frame
         decodedFrame = fread(fidDecoded, [width, height], 'uint8')';
         
         % Calculate the absolute difference between the frames
-        differenceFrame = abs(double(originalFrame) - double(decodedFrame));
+        differenceFrame = abs(double(refFrame) - double(decodedFrame));
 
         % Display the frames for comparison
         figure;
         
         % Display the original frame
         subplot(1, 3, 1);
-        imshow(originalFrame, []);
-        title(sprintf('Original Frame %d', frameIdx));
+        imshow(refFrame, []);
+        title(sprintf('Reference Frame %d', frameIdx));
         
         % Display the decoded frame
         subplot(1, 3, 2);
@@ -47,6 +50,6 @@ function compareYUVFrames(originalFile, decodedFile, width, height, numFrames)
     end
     
     % Close the files
-    fclose(fidOriginal);
+    fclose(fidReference);
     fclose(fidDecoded);
 end
