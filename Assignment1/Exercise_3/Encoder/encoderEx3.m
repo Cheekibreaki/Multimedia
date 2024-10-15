@@ -19,7 +19,7 @@ function encoderEx3(filename, numFrames, width, height, blockSize, searchRange)
 
     % Open file for dumping motion vectors
     mvFile = fopen('../Outputs/motion_vectors.txt', 'w');
-
+    yuvFile = fopen('../Outputs/referenceFrames.yuv', 'w');
     % For the first frame, use the hypothetical reconstructed frame as reference
     referenceFrame = 128 * ones(height, width,'uint8');  % height * width = 288 * 352
     
@@ -47,6 +47,8 @@ function encoderEx3(filename, numFrames, width, height, blockSize, searchRange)
         % % Save motion vectors and approximated residuals for this frame
         motionVectorFile = sprintf('../Outputs/motionVectors_frame_%d.mat', frameIdx);
         residualFile = sprintf('../Outputs/approximatedResiduals_frame_%d.mat', frameIdx);
+        
+        fwrite(yuvFile, referenceFrame', 'uint8');
         save(motionVectorFile, 'motionVectors');
         save(residualFile, 'approximatedResiduals');
     

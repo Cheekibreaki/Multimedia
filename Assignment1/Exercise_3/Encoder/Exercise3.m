@@ -3,6 +3,7 @@ addpath('../Utils');  % For utils functions
 filename = '../../foreman_cif-1.yuv';  % YUV file to read
 outputFile = '../Outputs/Y_only_foreman.yuv'; % File to store Y-only components
 paddedOutputFile = '../Outputs/padded_Y_foreman.yuv'; % File to store padded Y components
+referenceFile = '../Outputs/referenceFrames.yuv'
 width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 10;                 % Number of frames to process
@@ -22,4 +23,4 @@ encoderEx3(paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, sea
 
 decoderEx3(numFrames, paddedWidth, paddedHeight, blockSize, searchRange)
 %decoder
-compareYUVFrames('../Outputs/Y_only_foreman.yuv', '../Outputs/decoded_Y_foreman.yuv', 352, 288, 10);
+compareYUVFrames(referenceFile, '../Outputs/Y_only_foreman.yuv', '../Outputs/decoded_Y_foreman.yuv', 352, 288, 10);
