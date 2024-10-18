@@ -1,4 +1,4 @@
-function decoderEx3(numFrames, width, height, blockSize, searchRange)
+function decoderEx3(filename, numFrames, width, height, blockSize, searchRange)
     % decoderEx3: This function decodes the video sequence using the
     % approximated residuals and motion vectors generated during encoding.
     %
@@ -10,8 +10,8 @@ function decoderEx3(numFrames, width, height, blockSize, searchRange)
     %   searchRange - Search range for motion estimation
 
     % Open file for dumping decoded frames
-    outputFile = '../Outputs/decoded_Y_foreman.yuv';
-    fid = fopen(outputFile, 'w');
+    
+    fid = fopen(filename, 'w');
 
     % For the first frame, use the hypothetical reconstructed frame as reference
     referenceFrame = 128 * ones(height, width, 'uint8');  % height * width = 288 * 352
