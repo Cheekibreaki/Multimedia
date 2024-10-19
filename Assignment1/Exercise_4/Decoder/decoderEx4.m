@@ -15,6 +15,12 @@ function decoderEx3(filename, numFrames, width, height, blockSize, searchRange, 
 
     % For the first frame, use the hypothetical reconstructed frame as reference
     referenceFrame = 128 * ones(height, width, 'uint8');  % height * width = 288 * 352
+    
+    % Initialize the motion vector array (for storing motion vectors for each block)
+    lastMotionVectors = zeros(ceil(height/blockSize), ceil(width/blockSize),2);    
+    lastQuantizedResidues = zeros(height, width);
+    lastPredictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
+
 
     % Iterate through each frame to decode
     for frameIdx = 1:numFrames
@@ -22,18 +28,25 @@ function decoderEx3(filename, numFrames, width, height, blockSize, searchRange, 
         quantizedresidualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
         load(quantizedresidualFile, 'quantizedResiduals');
 
+        quantizedResiduals = invdifferential(lastQuantizedResidues,quantizedResiduals);
+        lastQuantizedResidues = quantizedResiduals;
+        
+
         isIFrame = (frameIdx == 1 || mod(frameIdx - 1, I_Period) == 0);
 
         if isIFrame
             predictionModesFile = sprintf('../Outputs/PredictionModes_frame_%d.mat', frameIdx);
             load(predictionModesFile, 'predictionModes');
+            predictionModes = invdifferential(lastPredictionModes,predictionModes);
             reconstructedFrame = intraCompensation(predictionModes,invquantization(quantizedResiduals, dct_blockSize,width,height,QP),blockSize);
+            lastPredictionModes = predictionModes;
         else
 
             % Load the motion vectors and approximated residuals for the current frame
             motionVectorFile = sprintf('../Outputs/motionVectors_frame_%d.mat', frameIdx);
             load(motionVectorFile, 'motionVectors');
-            
+            motionVectors = invdifferential(lastMotionVectors,motionVectors);
+            lastMotionVectors = motionVectors;
 
     
             % Perform motion compensation to get the predicted frame

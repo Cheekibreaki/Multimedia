@@ -12,7 +12,7 @@ function compareYUVFrames(referenceFile, originalFile, decodedFile, width, heigh
     % Open the original and decoded files for reading
     fidReference = fopen(referenceFile, 'r');
     fidDecoded = fopen(decodedFile, 'r');
-    
+    fread(fidReference, [width, height], 'uint8')';
 
     % Iterate through each frame to compare
     for frameIdx = 1:numFrames

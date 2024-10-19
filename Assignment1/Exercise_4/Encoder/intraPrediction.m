@@ -1,7 +1,7 @@
 function [predictedFrame, predictionModes] = intraPrediction(currentFrame, blockSize)
     [height, width] = size(currentFrame);
     predictedFrame = zeros(size(currentFrame), 'uint8');
-    predictionModes = zeros(ceil(height/blockSize), ceil(width/blockSize), 'uint8');
+    predictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
     
     for y = 1:blockSize:height
         for x = 1:blockSize:width
