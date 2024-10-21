@@ -1,4 +1,4 @@
-function [quantizedResiduals] = quantization(residuals, dct_blockSize,width,height,QP)
+function [quantizedResiduals] = quantization(residuals, dct_blockSize,width,height,baseQP)
     quantizedResiduals = zeros(size(residuals));
     for row = 1:dct_blockSize:height
         for col = 1:dct_blockSize:width
@@ -6,8 +6,9 @@ function [quantizedResiduals] = quantization(residuals, dct_blockSize,width,heig
             dctBlock = dct2(double(block));
     
             % Quantization
-            Q = createQMatrix(size(block), QP);
-            quantizedBlock = (dctBlock ./ Q);
+            % QP = adaptiveQP(dct_blockSize, baseQP);
+            Q = createQMatrix(size(block), baseQP);
+            quantizedBlock = dctBlock ./ Q;
             quantizedResiduals(row:row+dct_blockSize-1, col:col+dct_blockSize-1) = quantizedBlock;
         end
     end
@@ -35,13 +36,15 @@ function Q = createQMatrix(blockSize, QP)
     end
 end
 
-% function adaptiveQP = getAdaptiveQP(block, baseQP)
-%     blockVariance = var(double(block(:)));
-%     if blockVariance > 1000
-%         adaptiveQP = max(0, baseQP - 2);  % Reduce QP for high-variance blocks
-%     elseif blockVariance < 100
-%         adaptiveQP = min(51, baseQP + 2);  % Increase QP for low-variance blocks
-%     else
-%         adaptiveQP = baseQP;
+% function QP = adaptiveQP(i, baseQP)
+%     % Check if QP is in the valid range
+% 
+% 
+%     % Initialize the quantization matrix Q
+%     QP = zeros(i, i);
+%     for row = 1:i
+%         for col = 1:i
+%             QP(row, col) = 2 ^ (baseQP + floor((row + col - 2) / i));
+%         end
 %     end
 % end

@@ -1,16 +1,21 @@
-function [reconstructedResiduals] = invquantization(quantizedResiduals, dct_blockSize, width, height, QP)
+function [reconstructedResiduals] = invquantization(quantizedResiduals, dct_blockSize, width, height, baseQP)
     reconstructedResiduals = zeros(size(quantizedResiduals));
     for row = 1:dct_blockSize:height
         for col = 1:dct_blockSize:width
             % Extract the current block from the quantized residuals
             quantizedBlock = quantizedResiduals(row:row+dct_blockSize-1, col:col+dct_blockSize-1);
-            
+            % QP = adaptiveQP(dct_blockSize, baseQP);
             % Recreate the quantization matrix
-            Q = createQMatrix(size(quantizedBlock), QP);
+            Q = createQMatrix(size(quantizedBlock), baseQP);
             
             % Inverse quantization (element-wise multiplication)
             dequantizedBlock = quantizedBlock .* Q;
             
+
+            % if rounded, will affect quality of I frame !!!!
+
+            
+
             % Apply inverse DCT to the dequantized block
             idctBlock = idct2(dequantizedBlock);
             
@@ -43,13 +48,15 @@ function Q = createQMatrix(blockSize, QP)
     end
 end
 
-% function adaptiveQP = getAdaptiveQP(block, baseQP)
-%     blockVariance = var(double(block(:)));
-%     if blockVariance > 1000
-%         adaptiveQP = max(0, baseQP - 2);  % Reduce QP for high-variance blocks
-%     elseif blockVariance < 100
-%         adaptiveQP = min(51, baseQP + 2);  % Increase QP for low-variance blocks
-%     else
-%         adaptiveQP = baseQP;
+% function QP = adaptiveQP(i, baseQP)
+%     % Check if QP is in the valid range
+% 
+% 
+%     % Initialize the quantization matrix Q
+%     QP = zeros(i, i);
+%     for row = 1:i
+%         for col = 1:i
+%             QP(row, col) = 2 ^ (baseQP + floor((row + col - 2) / i));
+%         end
 %     end
 % end

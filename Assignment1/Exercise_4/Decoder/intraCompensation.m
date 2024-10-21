@@ -1,7 +1,7 @@
 function [reconstructedFrame] = intraCompensation(predictionModes, residuals, blockSize)
     [height, width] = size(residuals);
     reconstructedFrame = zeros(size(residuals), 'uint8');
-    
+
     for y = 1:blockSize:height
         for x = 1:blockSize:width
             actualBlockHeight = min(blockSize, height-y+1);

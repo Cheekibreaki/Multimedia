@@ -1,5 +1,5 @@
-function decoderEx3(filename, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period)
-    % decoderEx3: This function decodes the video sequence using the
+function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period)
+    % decoderEx4: This function decodes the video sequence using the
     % approximated residuals and motion vectors generated during encoding.
     %
     % Parameters:
@@ -10,55 +10,76 @@ function decoderEx3(filename, numFrames, width, height, blockSize, searchRange, 
     %   searchRange - Search range for motion estimation
 
     % Open file for dumping decoded frames
-    
     fid = fopen(filename, 'w');
 
     % For the first frame, use the hypothetical reconstructed frame as reference
     referenceFrame = 128 * ones(height, width, 'uint8');  % height * width = 288 * 352
+    mvwidth = ceil(width/blockSize);
+    mvheight = ceil(height/blockSize);
     
+    predwidth = ceil(width/blockSize);
+    predheight = ceil(height/blockSize);
+
     % Initialize the motion vector array (for storing motion vectors for each block)
-    lastMotionVectors = zeros(ceil(height/blockSize), ceil(width/blockSize),2);    
-    lastQuantizedResidues = zeros(height, width);
-    lastPredictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
-
-
+    lastMotionVectors = zeros(mvheight, mvwidth, 2);
+    lastPredictionModes = int32(zeros(predheight, predwidth));
+    
+    reswidth = width;
+    resheight = height;
     % Iterate through each frame to decode
     for frameIdx = 1:numFrames
         
-        quantizedresidualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
-        load(quantizedresidualFile, 'quantizedResiduals');
-
-        quantizedResiduals = invdifferential(lastQuantizedResidues,quantizedResiduals);
-        lastQuantizedResidues = quantizedResiduals;
-        
-
         isIFrame = (frameIdx == 1 || mod(frameIdx - 1, I_Period) == 0);
-
+        
         if isIFrame
+            predmodeBinLengthFile = sprintf('../Outputs/predmodeBinLength_frame_%d.mat', frameIdx);
+            load(predmodeBinLengthFile, 'predmodeBinLength');
+            
             predictionModesFile = sprintf('../Outputs/PredictionModes_frame_%d.mat', frameIdx);
-            load(predictionModesFile, 'predictionModes');
-            predictionModes = invdifferential(lastPredictionModes,predictionModes);
-            reconstructedFrame = intraCompensation(predictionModes,invquantization(quantizedResiduals, dct_blockSize,width,height,QP),blockSize);
-            lastPredictionModes = predictionModes;
+            load(predictionModesFile, 'encodedPredicitonModes');
+            quantizedresidualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
+            load(quantizedresidualFile, 'encodedResidues');
+
+            [nonimportant1,predictionModes,quantizedResiduals] = entropyDecode(isIFrame, [], encodedPredicitonModes, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight, predmodeBinLength,0)
+            a = 1
         else
+            predictionModesFile = sprintf('../Outputs/motionVectorLength_frame_%d.mat', frameIdx);
+            load(predictionModesFile, 'motionVectorLength');
 
-            % Load the motion vectors and approximated residuals for the current frame
             motionVectorFile = sprintf('../Outputs/motionVectors_frame_%d.mat', frameIdx);
-            load(motionVectorFile, 'motionVectors');
-            motionVectors = invdifferential(lastMotionVectors,motionVectors);
-            lastMotionVectors = motionVectors;
+            load(motionVectorFile, 'encodedMotionVector');
+            quantizedresidualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
+            load(quantizedresidualFile, 'encodedResidues');
+            
+            [motionVectors,nonimportant1,quantizedResiduals] = entropyDecode(isIFrame, encodedMotionVector, [], encodedResidues,mvheight, mvwidth,   predwidth, predheight,  reswidth, resheight, 0 ,motionVectorLength)
 
-    
-            % Perform motion compensation to get the predicted frame
-            predictedFrame = motionCompensation(referenceFrame, motionVectors, blockSize);
-    
-            % Add the approximated residuals to the predicted frame to reconstruct
-            reconstructedFrame = double(predictedFrame) + double(invquantization(quantizedResiduals, dct_blockSize,width,height,QP));
-   
-    
-            fprintf('Decoded frame %d\n', frameIdx);
         end
 
+
+        if isIFrame
+            predictionModes = invdifferential(lastPredictionModes, predictionModes);
+            compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
+            intraCompFrame = intraCompensation(predictionModes, compresiduals, blockSize);
+            lastPredictionModes = predictionModes;
+
+
+            % Add the approximated residuals to the predicted frame to reconstruct
+            reconstructedFrame = double(intraCompFrame)
+
+        else
+            % Load the motion vectors and approximated residuals for the current frame
+
+            motionVectors = invdifferential(lastMotionVectors, motionVectors);
+            lastMotionVectors = motionVectors;
+
+            % Perform motion compensation to get the predicted frame
+            predictedFrame = motionCompensation(referenceFrame, motionVectors, blockSize);
+            compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
+
+            % Add the approximated residuals to the predicted frame to reconstruct
+            reconstructedFrame = double(predictedFrame) + double(compresiduals);
+        end
+        
         % Clip the values to be in the range [0, 255] and convert to uint8
         reconstructedFrame = uint8(max(0, min(255, reconstructedFrame)));
 
@@ -67,6 +88,8 @@ function decoderEx3(filename, numFrames, width, height, blockSize, searchRange, 
 
         % Update the reference frame for the next iteration
         referenceFrame = reconstructedFrame;
+
+        fprintf('Decoded frame %d', frameIdx);
     end
 
     % Close the output file

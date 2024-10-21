@@ -1,3 +1,3 @@
 function [originalBlock] = invdifferential(diffedBlock,currBlock)
-    originalBlock = diffedBlock + currBlock;
+    originalBlock = int32(diffedBlock) + int32(currBlock);
 end

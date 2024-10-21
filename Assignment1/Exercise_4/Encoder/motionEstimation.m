@@ -1,4 +1,4 @@
-function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame, blockSize, searchRange, mvFile)
+function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame, blockSize, searchRange)
     % Motion Estimation function that processes blocks in raster order.
     % Calls findBestMatch to find the best matching block in the reference frame.
     %
@@ -46,8 +46,8 @@ function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame
             % Add the MAE of this block to the total MAE
             totalMAE = totalMAE + minMAE;
 
-            %dump the motion vector into the file
-            fprintf(mvFile, 'Block (%d, %d): dy = %d, dx = %d\n', (col - 1) + 1, (row - 1) + 1, dy, dx);
+           
+            
         end
     end
 
