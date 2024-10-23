@@ -17,13 +17,15 @@ function originalValues = diffDecoding(values, type)
                     originalValues(i, j) = values(i, j) + 0;
                 elseif strcmp(type, 'mv')
                     % Assume previous MV is (0, 0)
-                    originalValues(i, j, :) = values(i, j, :) + [0, 0];
+                    originalValues(i, j, 1) = values(i, j, 1) + 0;
+                    originalValues(i, j, 2) = values(i, j, 2) + 0;
                 end
             else  % Add the differential value to the previous block's value
                 if strcmp(type, 'modes')
                     originalValues(i, j) = values(i, j) + originalValues(i, j - 1);
                 elseif strcmp(type, 'mv')
-                    originalValues(i, j, :) = values(i, j, :) + originalValues(i, j - 1, :);
+                    originalValues(i, j, 1) = values(i, j, 1) + originalValues(i, j - 1, 1);
+                    originalValues(i, j, 2) = values(i, j, 2) + originalValues(i, j - 1, 2);
                 end
             end
         end

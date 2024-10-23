@@ -17,13 +17,15 @@ function diffValues = diffEncoding(values,type)
                     diffValues(i, j) = values(i, j) - 0;  
                 elseif strcmp(type, 'mv')
                     % Assume previous MV is (0, 0)
-                    diffValues(i, j, :) = values(i, j, :) - [0, 0];
+                    diffValues(i, j, 1) = values(i, j, 1) - 0; 
+                    diffValues(i, j, 2) = values(i, j, 2) - 0;
                 end
             else  % Compare with the left neighbor
                 if strcmp(type, 'modes')
                     diffValues(i, j) = values(i, j) - values(i, j - 1);
                 elseif strcmp(type, 'mv')
-                    diffValues(i, j, :) = values(i, j, :) - values(i, j - 1, :);
+                    diffValues(i, j, 1) = values(i, j, 1) - values(i, j - 1, 1);
+                    diffValues(i, j, 2) = values(i, j, 2) - values(i, j - 1, 2);
                 end
             end
         end
