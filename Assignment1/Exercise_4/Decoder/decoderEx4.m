@@ -21,8 +21,8 @@ function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, 
     predheight = ceil(height/blockSize);
 
     % Initialize the motion vector array (for storing motion vectors for each block)
-    lastMotionVectors = zeros(mvheight, mvwidth, 2);
-    lastPredictionModes = int32(zeros(predheight, predwidth));
+    %lastMotionVectors = zeros(mvheight, mvwidth, 2);
+    %lastPredictionModes = int32(zeros(predheight, predwidth));
     
     reswidth = width;
     resheight = height;
@@ -57,20 +57,21 @@ function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, 
 
 
         if isIFrame
-            predictionModes = invdifferential(lastPredictionModes, predictionModes);
+            %predictionModes = invdifferential(lastPredictionModes, predictionModes);
+            predictionModes = diffDecoding(predictionModes,'modes');
             compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
             intraCompFrame = intraCompensation(predictionModes, compresiduals, blockSize);
-            lastPredictionModes = predictionModes;
+            %lastPredictionModes = predictionModes;
 
 
             % Add the approximated residuals to the predicted frame to reconstruct
-            reconstructedFrame = double(intraCompFrame)
+            reconstructedFrame = double(intraCompFrame);
 
         else
             % Load the motion vectors and approximated residuals for the current frame
-
-            motionVectors = invdifferential(lastMotionVectors, motionVectors);
-            lastMotionVectors = motionVectors;
+            motionVectors = diffDecoding(motionVectors,'mv');
+            %motionVectors = invdifferential(lastMotionVectors, motionVectors);
+            %lastMotionVectors = motionVectors;
 
             % Perform motion compensation to get the predicted frame
             predictedFrame = motionCompensation(referenceFrame, motionVectors, blockSize);

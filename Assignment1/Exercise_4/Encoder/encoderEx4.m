@@ -25,8 +25,8 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
     
     % Initialize the motion vector array (for storing motion vectors for each block)
 
-    lastMotionVectors = zeros(ceil(height/blockSize), ceil(width/blockSize),2);    
-    lastPredictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
+    %lastMotionVectors = zeros(ceil(height/blockSize), ceil(width/blockSize),2);    
+    %lastPredictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
 
 
 
@@ -42,21 +42,24 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
 
         if isIFrame
            [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize);
-           predictionModes = differentital(lastPredictionModes,currPredictionModes);
-           lastPredictionModes = currPredictionModes;
+           % re-process the modes to be differential based on the last block
+           predictionModes = diffEncoding(currPredictionModes,'modes');
+         %  predictionModes = differentital(lastPredictionModes,currPredictionModes);
+         %  lastPredictionModes = currPredictionModes;
         else
            
             % Motion estimation
             [currMotionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame, blockSize, searchRange);        
             % Motion compensation to get the predicted frame
             predictedFrame = motionCompensation(referenceFrame, currMotionVectors, blockSize);
-            motionVectors = differentital(lastMotionVectors,currMotionVectors);
-            lastMotionVectors = currMotionVectors;
-            % Calculate residuals 
+            % re-process the motion vectors to be differential based on the last block
+            motionVectors = diffEncoding(currMotionVectors,'mv');
+        %    motionVectors = differentital(lastMotionVectors,currMotionVectors);
+        %    lastMotionVectors = currMotionVectors;
 
         end
         
-        
+        % Calculate residuals 
         Residuals = double(currentFrame) - double(predictedFrame);
         quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP);      
         
