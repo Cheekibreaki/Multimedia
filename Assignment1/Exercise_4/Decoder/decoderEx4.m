@@ -40,7 +40,7 @@ function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, 
             quantizedresidualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
             load(quantizedresidualFile, 'encodedResidues');
 
-            [nonimportant1,predictionModes,quantizedResiduals] = entropyDecode(isIFrame, [], encodedPredicitonModes, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight, predmodeBinLength,0)
+            [nonimportant1,predictionModes,quantizedResiduals] = entropyDecode(isIFrame, [], encodedPredicitonModes, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight);
             a = 1
         else
             predictionModesFile = sprintf('../Outputs/motionVectorLength_frame_%d.mat', frameIdx);
@@ -51,7 +51,7 @@ function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, 
             quantizedresidualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
             load(quantizedresidualFile, 'encodedResidues');
             
-            [motionVectors,nonimportant1,quantizedResiduals] = entropyDecode(isIFrame, encodedMotionVector, [], encodedResidues,mvheight, mvwidth,   predwidth, predheight,  reswidth, resheight, 0 ,motionVectorLength)
+            [motionVectors,nonimportant1,quantizedResiduals] = entropyDecode(isIFrame, encodedMotionVector, [], encodedResidues,mvheight, mvwidth,   predwidth, predheight,  reswidth, resheight);
 
         end
 
