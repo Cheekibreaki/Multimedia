@@ -63,11 +63,24 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
         Residuals = double(currentFrame) - double(predictedFrame);
         quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP);      
         
-        
+        % Check the quantized residual file
+        txtFile = sprintf('../Outputs/testing_encoder_quantizedResiduals_frame_%d.txt',frameIdx);
+        fid2 = fopen(txtFile, 'w');  % Open the file in write mode
+
+        % Loop through the matrix and print each element
+        [rows, cols] = size(quantizedResiduals);
+        for i = 1:rows
+            fprintf(fid2, '%d ', quantizedResiduals(i, :));  % Print elements of the row
+            fprintf(fid2, '\n');  % Newline after each row
+        end
+
+        fclose(fid2);  % Close the file
+
+      
         
         if isIFrame
 
-            [nonimporatant1,encodedPredicitonModes,encodedResidues,predmodeBinLength,nonimporatant2] = entropyEncode(isIFrame, [], predictionModes, quantizedResiduals)
+            [nonimporatant1,encodedPredicitonModes,encodedResidues,predmodeBinLength,nonimporatant2] = entropyEncode(isIFrame, [], predictionModes, quantizedResiduals);
             
             save(sprintf('../Outputs/PredictionModes_frame_%d.mat', frameIdx), 'encodedPredicitonModes');
             %我们要concatinate吗？？？？？
@@ -79,7 +92,7 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
             
         else
 
-            [encodedMotionVector,nonimporatant1,encodedResidues,nonimporatant2,motionVectorLength] = entropyEncode(isIFrame, motionVectors, [], quantizedResiduals)
+            [encodedMotionVector,nonimporatant1,encodedResidues,nonimporatant2,motionVectorLength] = entropyEncode(isIFrame, motionVectors, [], quantizedResiduals);
             
             motionVectorFile = sprintf('../Outputs/motionVectors_frame_%d.mat', frameIdx);
 
@@ -98,7 +111,6 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
         
         compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
         reconstructedFrame = double(predictedFrame) + double(compresiduals);
-   
         fprintf('Processed frame %d\n', frameIdx);
        
         
