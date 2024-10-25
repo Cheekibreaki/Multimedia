@@ -6,7 +6,7 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues,predmodeBin
     % block_size: size of the block (e.g., 4 for 4x4 blocks)
 
     % 1. Frame Type Marker
-    %我们要用这个吗？？？？？
+    %TODO:  我们要用这个
     encoded_stream = frame_type;  % 1 for I-frame, 0 for P-frame
     encodedMotionVector = [];
     encodedPredicitonModes = [];
@@ -30,6 +30,7 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues,predmodeBin
 
         residues1d = zigzag(residues2d);
         encodedResidues = rle_encode(residues1d); 
+        %TODO: encode risidue in egc like others
 
     
 end

@@ -98,6 +98,10 @@ function [approximatedPredictedFrame, predictionModes,approximatedReconstructedF
             
             residualBlock = currentFrame(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1) - approximatedPredictedFrame(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1);
             quantizedBlock = quantization(residualBlock, dct_blockSize,blockSize,blockSize,baseQP)
+
+
+            % TODO: what is dct_blocksize and blocksize are not multiple of
+            % each other =>>>>>> just let it be
             approximatedresidualBlock = invquantization(quantizedBlock,dct_blockSize,blockSize,blockSize,baseQP)
             approximatedReconstructedFrame(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1) = approximatedresidualBlock + approximatedPredictedFrame(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1);
         end
