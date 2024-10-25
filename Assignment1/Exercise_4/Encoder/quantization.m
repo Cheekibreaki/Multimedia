@@ -8,7 +8,7 @@ function [quantizedResiduals] = quantization(residuals, dct_blockSize,width,heig
             % Quantization
             % QP = adaptiveQP(dct_blockSize, baseQP);
             Q = createQMatrix(size(block), baseQP);
-            quantizedBlock = dctBlock ./ Q;
+            quantizedBlock = round(dctBlock ./ Q);
             quantizedResiduals(row:row+dct_blockSize-1, col:col+dct_blockSize-1) = quantizedBlock;
         end
     end

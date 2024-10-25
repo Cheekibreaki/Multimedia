@@ -29,7 +29,14 @@ function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, 
     % Iterate through each frame to decode
     for frameIdx = 1:numFrames
         
-        isIFrame = (frameIdx == 1 || mod(frameIdx - 1, I_Period) == 0);
+        if frameIdx == 1
+            isIFrame = true;
+        elseif frameIdx < I_Period
+            isIFrame = false;
+        else
+            isIFrame = (mod(frameIdx - 1, I_Period) == 0);
+        end
+        % isIFrame = false;
         
         if isIFrame
             predmodeBinLengthFile = sprintf('../Outputs/predmodeBinLength_frame_%d.mat', frameIdx);
@@ -65,7 +72,7 @@ function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, 
 
             % Add the approximated residuals to the predicted frame to reconstruct
             reconstructedFrame = double(intraCompFrame)
-
+          
         else
             % Load the motion vectors and approximated residuals for the current frame
 
@@ -81,7 +88,8 @@ function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, 
         end
         
         % Clip the values to be in the range [0, 255] and convert to uint8
-        reconstructedFrame = uint8(max(0, min(255, reconstructedFrame)));
+        % reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
+        
 
         % Write the decoded frame to the output file
         fwrite(fid, reconstructedFrame', 'uint8');

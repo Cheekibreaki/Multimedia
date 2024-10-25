@@ -38,12 +38,20 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
             referenceFrame = reconstructedFrame;  % Use the reconstructed frame as the reference for the next frame
        
         end
-        isIFrame = (frameIdx == 1 || mod(frameIdx - 1, I_Period) == 0);
-
+        if frameIdx == 1
+            isIFrame = true;
+        elseif frameIdx < I_Period
+            isIFrame = false;
+        else
+            isIFrame = (mod(frameIdx - 1, I_Period) == 0);
+        end
+        % isIFrame = false;
         if isIFrame
-           [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize);
+           [predictedFrame, currPredictionModes,approximatedReconstructedFrame] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP);
            predictionModes = differentital(lastPredictionModes,currPredictionModes);
            lastPredictionModes = currPredictionModes;
+           Residuals = double(currentFrame) - double(predictedFrame);
+           a = 1;
         else
            
             % Motion estimation
@@ -53,17 +61,17 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
             motionVectors = differentital(lastMotionVectors,currMotionVectors);
             lastMotionVectors = currMotionVectors;
             % Calculate residuals 
-
+            Residuals = double(currentFrame) - double(predictedFrame);
         end
         
         
-        Residuals = double(currentFrame) - double(predictedFrame);
+        
         quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP);      
         
         
         
         if isIFrame
-
+        
             [nonimporatant1,encodedPredicitonModes,encodedResidues,predmodeBinLength,nonimporatant2] = entropyEncode(isIFrame, [], predictionModes, quantizedResiduals)
             
             save(sprintf('../Outputs/PredictionModes_frame_%d.mat', frameIdx), 'encodedPredicitonModes');
@@ -76,7 +84,7 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
             
         else
 
-            [encodedMotionVector,nonimporatant1,encodedResidues,nonimporatant2,motionVectorLength] = entropyEncode(isIFrame, motionVectors, [], quantizedResiduals)
+            [encodedMotionVector,nonimporatant1,encodedResidues,nonimporatant2,motionVectorLength] = entropyEncode(isIFrame, motionVectors, [], quantizedResiduals);
             
             motionVectorFile = sprintf('../Outputs/motionVectors_frame_%d.mat', frameIdx);
 

@@ -9,12 +9,12 @@ referenceFile = '../Outputs/referenceFrames.yuv'
 decodedFile = '../Outputs/decoded_Y_foreman.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
-numFrames = 10;                 % Number of frames to process
+numFrames = 7;                 % Number of frames to process
 blockSize = 8;                   % Block size for motion estimation
 searchRange = 8;                 % Search range r = 1,4, and 8
 dct_blockSize = 8;
 QP = 6;
-I_Period = 3; 
+I_Period = 1; 
 
 
 % Pre-process
