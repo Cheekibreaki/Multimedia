@@ -15,13 +15,11 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
 
         motionVector2d = reshape_3d_to_2d(motionVector3d);
         motionVector1d = zigzag(motionVector2d);
-        motionVectorRLE = rle_encode(motionVector1d);
-        encodedMotionVector = exp_golomb_encode(motionVectorRLE);
+        encodedMotionVector = exp_golomb_encode(motionVector1d);
 
     elseif frame_type == 1
         predicitonModes1d = zigzag(predicitonModes2d);
-        predicitonModesRLE = rle_encode(predicitonModes1d);
-        encodedPredicitonModes = exp_golomb_encode(predicitonModesRLE); 
+        encodedPredicitonModes = exp_golomb_encode(predicitonModes1d); 
 
     end
 

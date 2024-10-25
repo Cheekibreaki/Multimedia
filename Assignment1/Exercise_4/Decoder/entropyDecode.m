@@ -25,16 +25,13 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
     if frame_type == 0  % Assuming data handling for P-frames
         
         motionVectorRevEGC = exp_golomb_decode(encodedMotionVector1d);
-        motionVector1d = rle_decode(motionVectorRevEGC, mvheight * mvwidth * 2); 
-        
-        motionVector2d = invzigzag(motionVector1d, mvheight, length(motionVector1d)/mvheight);
+        motionVector2d = invzigzag(motionVectorRevEGC, mvheight, length(motionVectorRevEGC)/mvheight);
         decodedMotionVector3d = reshape_2d_to_3d(motionVector2d, mvwidth, mvheight, 2);
 
     elseif frame_type == 1
     
         predictedModeRevEGC = exp_golomb_decode(encodedPredicitonModes1d); 
-        predicitonModes1d = rle_decode(predictedModeRevEGC,predheight * predwidth);
-        decodedPredicitonModes2d = invzigzag(predicitonModes1d, predwidth, predheight);
+        decodedPredicitonModes2d = invzigzag(predictedModeRevEGC, predwidth, predheight);
         
     end
         
