@@ -8,7 +8,7 @@ function predictedFrame = motionCompensation(referenceFrame, motionVectors, bloc
     [height, width] = size(referenceFrame);
     
     % Initialize the predicted frame with zeros
-    predictedFrame = zeros(height, width, 'uint8');
+    predictedFrame = zeros(height, width, 'double');
     
     
     % Loop over each block based on the pixel positions (row, col)
@@ -30,7 +30,7 @@ function predictedFrame = motionCompensation(referenceFrame, motionVectors, bloc
             refBlock = referenceFrame(refRowStart:(refRowStart + blockSize - 1), refColStart:(refColStart + blockSize - 1));
             
             % Place the reference block into the predicted frame
-            predictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = refBlock;
+            predictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,refBlock)));
         end
     end
 end

@@ -21,7 +21,7 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues,predmodeBin
         motionVectorRLE = rle_encode(motionVector1d);
         encodedMotionVector = exp_golomb_encode(motionVectorRLE);
 
-    else frame_type == 1
+    elseif frame_type == 1
         predicitonModes1d = zigzag(predicitonModes2d);
         predicitonModesRLE = rle_encode(predicitonModes1d);
         encodedPredicitonModes = exp_golomb_encode(predicitonModesRLE); 
@@ -29,8 +29,8 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues,predmodeBin
     end
 
         residues1d = zigzag(residues2d);
-        encodedResidues = rle_encode(residues1d); 
-        %TODO: encode risidue in egc like others
+        residuesRLE = rle_encode(residues1d); 
+        encodedResidues = exp_golomb_encode(residuesRLE);
 
     
 end
