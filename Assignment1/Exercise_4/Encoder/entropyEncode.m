@@ -18,20 +18,19 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues,predmodeBin
         motionVector2d = reshape_3d_to_2d(motionVector3d);
 
         motionVector1d = zigzag(motionVector2d);
-        
-        motionVectorbin = exp_golomb_encode(motionVector1d);  % Encode after flattening to 1D
-        encodedMotionVector = rle_encode(motionVectorbin); 
-        motionVectorLength = length (motionVectorbin)
-        
+        motionVectorRLE = rle_encode(motionVector1d);
+        encodedMotionVector = exp_golomb_encode(motionVectorRLE);
+
     else frame_type == 1
         predicitonModes1d = zigzag(predicitonModes2d);
-        predicitonModesbin = exp_golomb_encode(predicitonModes1d); 
-        encodedPredicitonModes = rle_encode(predicitonModesbin); 
-        predmodeBinLength = length (predicitonModesbin)
+        predicitonModesRLE = rle_encode(predicitonModes1d);
+        encodedPredicitonModes = exp_golomb_encode(predicitonModesRLE); 
+
     end
 
         residues1d = zigzag(residues2d);
         encodedResidues = rle_encode(residues1d); 
+
     
 end
 

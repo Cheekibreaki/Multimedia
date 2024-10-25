@@ -1,4 +1,4 @@
-function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight, predmodeBinLength,motionVectorLength)
+function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight)
     temp = mvwidth
     mvwidth = mvheight
     mvheight = temp
@@ -25,17 +25,16 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
     decodedResidues2d = [];
     if frame_type == 0  % Assuming data handling for P-frames
         
-        motionVectorbin = rle_decode(encodedMotionVector1d, motionVectorLength); 
-       
-        motionVector1d = exp_golomb_decode(motionVectorbin);  % Encode after flattening to 1D
-        
+        motionVectorRevEGC = exp_golomb_decode(encodedMotionVector1d);
+        motionVector1d = rle_decode(motionVectorRevEGC, mvheight*mvwidth*2); 
         
         motionVector2d = invzigzag(motionVector1d, mvheight, length(motionVector1d)/mvheight);
         decodedMotionVector3d = reshape_2d_to_3d(motionVector2d, mvwidth, mvheight, 2);
         a = 1
     elseif frame_type == 1
-        predicitonModesbin = rle_decode(encodedPredicitonModes1d,predmodeBinLength); 
-        predicitonModes1d = exp_golomb_decode(predicitonModesbin); 
+    
+        predictedModeRevEGC = exp_golomb_decode(encodedPredicitonModes1d); 
+        predicitonModes1d = rle_decode(predictedModeRevEGC,predheight * predwidth);
         decodedPredicitonModes2d = invzigzag(predicitonModes1d, predwidth, predheight);
         
     end
@@ -65,6 +64,8 @@ function matrix = invzigzag(zigzag_order, rows, cols)
         end
     end
 end
+
+
 
 % function encoded = exp_golomb_encode(data)
 %     % Encode data using Exponential-Golomb coding based on specific rules
@@ -122,7 +123,7 @@ end
 
 function decoded = rle_decode(encoded,datalength)
     % Decode data using a custom Run-Length Encoding (RLE) scheme
-    % Return a 1D array containing the decoded values
+    % Return a 1D array containing the decoded values of shape 1x(blockSize * blockSize)
     decoded = [];
     i = 1;
     

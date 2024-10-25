@@ -25,8 +25,8 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
     
     % Initialize the motion vector array (for storing motion vectors for each block)
 
-    lastMotionVectors = zeros(ceil(height/blockSize), ceil(width/blockSize),2);    
-    lastPredictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
+    %lastMotionVectors = zeros(ceil(height/blockSize), ceil(width/blockSize),2);    
+    %lastPredictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
 
 
 
@@ -48,18 +48,18 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
         % isIFrame = false;
         if isIFrame
            [predictedFrame, currPredictionModes,approximatedReconstructedFrame] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP);
-           predictionModes = differentital(lastPredictionModes,currPredictionModes);
-           lastPredictionModes = currPredictionModes;
+           predictionModes = diffEncoding(currPredictionModes,'modes');
+           
            Residuals = double(currentFrame) - double(predictedFrame);
-           a = 1;
+           
         else
            
             % Motion estimation
             [currMotionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame, blockSize, searchRange);        
             % Motion compensation to get the predicted frame
             predictedFrame = motionCompensation(referenceFrame, currMotionVectors, blockSize);
-            motionVectors = differentital(lastMotionVectors,currMotionVectors);
-            lastMotionVectors = currMotionVectors;
+            motionVectors = diffEncoding(currMotionVectors,'mv');
+            
             % Calculate residuals 
             Residuals = double(currentFrame) - double(predictedFrame);
         end
@@ -69,10 +69,9 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
         quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP);      
         
         
-        
         if isIFrame
-        
-            [nonimporatant1,encodedPredicitonModes,encodedResidues,predmodeBinLength,nonimporatant2] = entropyEncode(isIFrame, [], predictionModes, quantizedResiduals)
+
+            [nonimporatant1,encodedPredicitonModes,encodedResidues,predmodeBinLength,nonimporatant2] = entropyEncode(isIFrame, [], predictionModes, quantizedResiduals);
             
             save(sprintf('../Outputs/PredictionModes_frame_%d.mat', frameIdx), 'encodedPredicitonModes');
             %我们要concatinate吗？？？？？
@@ -103,7 +102,6 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
         
         compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
         reconstructedFrame = double(predictedFrame) + double(compresiduals);
-   
         fprintf('Processed frame %d\n', frameIdx);
        
         
