@@ -1,4 +1,4 @@
-function [approximatedPredictedFrame, predictionModes,approximatedReconstructedFrame] = intraPrediction(currentFrame, blockSize,dct_blockSize,baseQP)
+function [approximatedPredictedFrame, predictionModes] = intraPrediction(currentFrame, blockSize,dct_blockSize,baseQP)
     [height, width] = size(currentFrame);
     approximatedPredictedFrame = zeros(size(currentFrame), 'double');
     predictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));

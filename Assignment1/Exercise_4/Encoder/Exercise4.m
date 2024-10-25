@@ -14,7 +14,7 @@ blockSize = 8;                   % Block size for motion estimation
 searchRange = 8;                 % Search range r = 1,4, and 8
 dct_blockSize = 8;
 QP = 6;
-I_Period = 1; 
+I_Period = 2; 
 
 
 % Pre-process
@@ -26,6 +26,6 @@ dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
 % encoder
 encoderEx4(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period)
 
-decoderEx4(decodedFile,numFrames, paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period)
+decoderEx4(decodedFile,numFrames, paddedWidth, paddedHeight, blockSize, dct_blockSize, QP)
 %decoder
 compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);

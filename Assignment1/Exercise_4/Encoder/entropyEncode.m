@@ -1,22 +1,19 @@
-function [encodedMotionVector,encodedPredicitonModes,encodedResidues,predmodeBinLength,motionVectorLength] = entropyEncode(frame_type, motionVector3d, predicitonModes2d, residues2d)
+function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyEncode(frame_type, motionVector3d, predicitonModes2d, residues2d)
     % Input:
     % frame_type: 1 for I-frame, 0 for P-frame 
     % pred_diff: array containing differential prediction information (modes for intra or motion vectors for inter)
     % dct_coeffs: block of quantized DCT coefficients
     % block_size: size of the block (e.g., 4 for 4x4 blocks)
 
-    % 1. Frame Type Marker
-    %TODO:  我们要用这个
-    encoded_stream = frame_type;  % 1 for I-frame, 0 for P-frame
+    % Frame Type Marker. Create the header to store frame type 
+    frameTypeHeader = frame_type;  % 1 for I-frame, 0 for P-frame
+
     encodedMotionVector = [];
     encodedPredicitonModes = [];
     encodedResidues = [];
-    predmodeBinLength = 0;
-    motionVectorLength = 0;
     if frame_type == 0  % Assuming data handling for P-frames
 
         motionVector2d = reshape_3d_to_2d(motionVector3d);
-
         motionVector1d = zigzag(motionVector2d);
         motionVectorRLE = rle_encode(motionVector1d);
         encodedMotionVector = exp_golomb_encode(motionVectorRLE);
@@ -32,7 +29,10 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues,predmodeBin
         residuesRLE = rle_encode(residues1d); 
         encodedResidues = exp_golomb_encode(residuesRLE);
 
-    
+    % Prepend the frame type to the encoded data (as a header)
+    encodedPredicitonModes = [frameTypeHeader, encodedPredicitonModes];
+    encodedMotionVector = [frameTypeHeader, encodedMotionVector];
+   
 end
 
 
@@ -123,7 +123,7 @@ function decoded = rle_decode(encoded,datalength)
         else
             % Zero value in encoded data indicates an actual zero in the original data
             decoded = [decoded, zeros(1, datalength-length(decoded))];
-            i = length(encoded) + 1
+            i = length(encoded) + 1;
         end
     end
 end
