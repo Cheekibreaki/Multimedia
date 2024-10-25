@@ -48,7 +48,6 @@ function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, 
             load(quantizedresidualFile, 'encodedResidues');
 
             [nonimportant1,predictionModes,quantizedResiduals] = entropyDecode(isIFrame, [], encodedPredicitonModes, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight);
-            a = 1
         else
             predictionModesFile = sprintf('../Outputs/motionVectorLength_frame_%d.mat', frameIdx);
             load(predictionModesFile, 'motionVectorLength');
@@ -64,11 +63,9 @@ function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, 
 
 
         if isIFrame
-            %predictionModes = invdifferential(lastPredictionModes, predictionModes);
             predictionModes = diffDecoding(predictionModes,'modes');
             compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
             intraCompFrame = intraCompensation(predictionModes, compresiduals, blockSize);
-            %lastPredictionModes = predictionModes;
 
 
             % Add the approximated residuals to the predicted frame to reconstruct
@@ -77,8 +74,6 @@ function decoderEx4(filename, numFrames, width, height, blockSize, searchRange, 
         else
             % Load the motion vectors and approximated residuals for the current frame
             motionVectors = diffDecoding(motionVectors,'mv');
-            %motionVectors = invdifferential(lastMotionVectors, motionVectors);
-            %lastMotionVectors = motionVectors;
 
             % Perform motion compensation to get the predicted frame
             predictedFrame = motionCompensation(referenceFrame, motionVectors, blockSize);

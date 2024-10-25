@@ -1,15 +1,17 @@
 function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight)
-    temp = mvwidth
-    mvwidth = mvheight
-    mvheight = temp
-
-    temp = predwidth
-    predwidth = predheight
-    predheight = temp
     
-    temp = reswidth
-    reswidth = resheight
-    resheight = temp
+    %switch the order of width & height
+    temp = mvwidth;
+    mvwidth = mvheight;
+    mvheight = temp;
+
+    temp = predwidth;
+    predwidth = predheight;
+    predheight = temp;
+    
+    temp = reswidth;
+    reswidth = resheight;
+    resheight = temp;
 
     % Input:
     % frame_type: 1 for I-frame, 0 for P-frame 
@@ -30,7 +32,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
         
         motionVector2d = invzigzag(motionVector1d, mvheight, length(motionVector1d)/mvheight);
         decodedMotionVector3d = reshape_2d_to_3d(motionVector2d, mvwidth, mvheight, 2);
-        a = 1
+
     elseif frame_type == 1
     
         predictedModeRevEGC = exp_golomb_decode(encodedPredicitonModes1d); 
@@ -143,7 +145,7 @@ function decoded = rle_decode(encoded,datalength)
         else
             % Zero value in encoded data indicates an actual zero in the original data
             decoded = [decoded, zeros(1, datalength-length(decoded))];
-            i = length(encoded) + 1
+            i = length(encoded) + 1;
         end
     end
 end

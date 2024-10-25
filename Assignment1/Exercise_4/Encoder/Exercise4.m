@@ -5,7 +5,7 @@ addpath('../Decoder');  % For Decoder functions
 filename = '../../foreman_cif-1.yuv';  % YUV file to read
 outputFile = '../Outputs/Y_only_foreman.yuv'; % File to store Y-only components
 paddedOutputFile = '../Outputs/padded_Y_foreman.yuv'; % File to store padded Y components
-referenceFile = '../Outputs/referenceFrames.yuv'
+referenceFile = '../Outputs/referenceFrames.yuv';
 decodedFile = '../Outputs/decoded_Y_foreman.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height

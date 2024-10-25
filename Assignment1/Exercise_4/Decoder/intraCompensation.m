@@ -17,11 +17,7 @@ function [reconstructedFrame] = intraCompensation(predictionModes, residuals, bl
                 % Horizontal prediction
                 if mode == 0
                     if x > 1
-                        % if y == 1 && x == 2 
-                        %     a = 1
-                        % end
                         predictedBlock = repmat(reconstructedFrame(y:y+actualBlockHeight-1, x-1), 1, actualBlockWidth);
-                        b = 1
                     else
                         predictedBlock = repmat(128, actualBlockHeight, actualBlockWidth);
                     end
@@ -39,13 +35,9 @@ function [reconstructedFrame] = intraCompensation(predictionModes, residuals, bl
             end
             
             % Reconstruct the block by adding the residuals back to the predicted block
-            addingResiduals = residuals(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1)
+            addingResiduals = residuals(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1);
             reconstructedBlock = double(predictedBlock) + double(addingResiduals);
             predictedFrame(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1) = predictedBlock;
-            
-            if y == 1 && x == 2 
-                a = 1
-            end
             % Store the reconstructed block in the output frame
             reconstructedBlock = double(max(0, min(255, reconstructedBlock)));
             reconstructedFrame(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1) = reconstructedBlock;
