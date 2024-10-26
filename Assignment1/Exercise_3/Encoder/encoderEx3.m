@@ -1,4 +1,4 @@
-function [psnrValues, maeValues] = encoderEx3(filename, numFrames, width, height, blockSize, searchRange)
+function [psnrValues, maeValues] = encoderEx3(filename, numFrames, width, height, blockSize, searchRange, n)
     % encoderEx3: This function performs motion estimation and motion 
     % compensation to encode a video sequence. It also returns PSNR and MAE values.
     %
@@ -6,7 +6,6 @@ function [psnrValues, maeValues] = encoderEx3(filename, numFrames, width, height
     %   psnrValues - Array of PSNR values for each frame
     %   maeValues - Array of average MAE values for each frame
 
-    n = 3; % You can set n = 1, 2, or 3 based on requirements
     roundingFactor = 2^n;
     
     % Initialize arrays to store metrics
