@@ -9,7 +9,7 @@ width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 10;                 % Number of frames to process
 blockSize = 8;                   % Block size for motion estimation
-searchRange = 8;                 % Search range r = 1,4, and 8
+searchRange = 4;                 % Search range r = 1,4, and 8
 
 
 

@@ -11,8 +11,23 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
     %   blockSize   - Size of the block for motion estimation
     %   searchRange - Search range for motion estimation
 
-
+    % Parameters for decoder
+    params.width = width;                
+    params.height = height;                
+    params.numFrames = numFrames;              
+    params.blockSize = blockSize;                        
+    params.dct_blockSize = dct_blockSize;           
+    params.QP = QP;                   
     
+   
+    % Save the parameters to a MAT-file
+    save('../Outputs/headerfile.mat', 'params');
+
+    % Write parameters needed for decoder to header file
+    headerFile = fopen('../Outputs/headerfile.mat', 'w');
+    fwrite(headerFile, [width, height, numFrames, blockSize, dct_blockSize, QP], 'int32');
+    fclose(headerFile);
+
     % Open the padded Y only file
     fid = fopen(paddedOutputFile, 'r');
 
@@ -108,6 +123,3 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
     fclose(fid);
 
 end
-
-
-

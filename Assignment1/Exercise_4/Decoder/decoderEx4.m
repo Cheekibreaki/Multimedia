@@ -1,4 +1,5 @@
-function decoderEx4(filename, numFrames, width, height, blockSize, dct_blockSize, QP)
+
+function decoderEx4(filename)
     % decoderEx4: This function decodes the video sequence using the
     % approximated residuals and motion vectors generated during encoding.
     %
@@ -10,6 +11,20 @@ function decoderEx4(filename, numFrames, width, height, blockSize, dct_blockSize
     %   blockSize   - Size of the block for motion compensation
     %   dct_blockSize -Size of the DCT block
     %   QP          - Quantization Parameter
+
+
+    % Read sequence parameters from header file
+    headerFile = fopen('../Outputs/headerfile.mat', 'r');
+    params = fread(headerFile, 7, 'int32');  % [width, height, numFrames, blockSize, dct_blockSize, QP]
+    % Extract individual parameters
+    width = params(1);
+    height = params(2);
+    numFrames = params(3);
+    blockSize = params(4);
+    dct_blockSize = params(5);
+    QP = params(6);
+    % Close the header file
+    fclose(headerFile);
 
     % Open file for dumping decoded frames
     fid = fopen(filename, 'w');
@@ -79,3 +94,4 @@ function decoderEx4(filename, numFrames, width, height, blockSize, dct_blockSize
     % Close the output file
     fclose(fid);
 end
+
