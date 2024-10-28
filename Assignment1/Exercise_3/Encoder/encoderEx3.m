@@ -72,14 +72,7 @@ function [psnrValues, maeValues] = encoderEx3(filename, numFrames, width, height
    
         fprintf('Processed frame %d, PSNR: %.2f dB, MAE: %.2f\n', ...
                 frameIdx, psnrValues(frameIdx), maeValues(frameIdx));
-    end
 
-    fprintf('\nMagnitude of residuals table:\n');
-    fprintf('Frame\t| Magnitude\n');
-    fprintf('----------------------\n');
-    for i = 1:numFrames
-        fprintf('%d\t| %d\n', i, residualMagnitudes(i));
-        % Create a figure with subplots to visualize each frame
         % --- Visualization ---
 
         % Calculate residuals before motion compensation (absolute value)
@@ -117,6 +110,14 @@ function [psnrValues, maeValues] = encoderEx3(filename, numFrames, width, height
         title('Predicted Frame');
 
     end
+
+    fprintf('\nMagnitude of residuals table:\n');
+    fprintf('Frame\t| Magnitude\n');
+    fprintf('----------------------\n');
+    for i = 1:numFrames
+        fprintf('%d\t| %d\n', i, residualMagnitudes(i));
+        % Create a figure with subplots to visualize each frame
+    end
     
     % Close files
     fclose(fid);
@@ -128,3 +129,4 @@ end
 function out = clip(in)
     out = max(0, min(255, in));
 end
+
