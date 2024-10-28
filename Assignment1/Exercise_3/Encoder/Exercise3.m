@@ -1,4 +1,5 @@
 addpath('../Utils');  % For utils functions
+addpath('../Decoder');
 % Parameters
 filename = '../../foreman_cif-1.yuv';  % YUV file to read
 outputFile = '../Outputs/Y_only_foreman.yuv'; % File to store Y-only components
