@@ -43,7 +43,7 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
     %lastMotionVectors = zeros(ceil(height/blockSize), ceil(width/blockSize),2);    
     %lastPredictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
 
-
+    
 
     for frameIdx = 1:numFrames
     

@@ -1,5 +1,5 @@
 
-function decoderEx4(filename)
+function [total_bytes,bytes_list] = decoderEx4(filename)
     % decoderEx4: This function decodes the video sequence using the
     % approximated residuals and motion vectors generated during encoding.
     %
@@ -25,7 +25,7 @@ function decoderEx4(filename)
     QP = params(6);
     % Close the header file
     fclose(headerFile);
-
+    total_bytes = 0;
     % Open file for dumping decoded frames
     fid = fopen(filename, 'w');
 
@@ -39,6 +39,7 @@ function decoderEx4(filename)
 
     reswidth = width;
     resheight = height;
+    bytes_list = zeros(1, numFrames);
     % Iterate through each frame to decode
     for frameIdx = 1:numFrames
 
@@ -50,6 +51,12 @@ function decoderEx4(filename)
        load(MDiffFile, 'encodedMDiff');
        isIFrame = encodedMDiff(1)
        encodedMDiff = encodedMDiff(2:end); 
+        quantizedResInfo = dir(quantizedresidualFile);
+        MDiffInfo = dir(MDiffFile);
+       total_bytes = total_bytes+quantizedResInfo.bytes
+       total_bytes = total_bytes+MDiffInfo.bytes
+       bytes_list(frameIdx) =  MDiffInfo.bytes + quantizedResInfo.bytes
+       
 
         if isIFrame
             [nonimportant1,predictionModes,quantizedResiduals] = entropyDecode(isIFrame, [], encodedMDiff, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight);
@@ -87,7 +94,7 @@ function decoderEx4(filename)
 
         % Update the reference frame for the next iteration
         referenceFrame = reconstructedFrame;
-
+        
         fprintf('Decoded frame %d', frameIdx);
     end
 
