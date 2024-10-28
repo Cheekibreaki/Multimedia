@@ -28,8 +28,8 @@ encoderEx4(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight,
 
 [total_byte,bytes_list] = decoderEx4(decodedFile);
 %decoder
-%compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
-calculatePSNR(decodedFile, paddedOutputFile, width, height, numFrames)
+compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
+%calculatePSNR(decodedFile, paddedOutputFile, width, height, numFrames)
 
 function avgPsnr = calculatePSNR(decodedFile, originalFile, width, height, numFrames)
     % Parameters:
