@@ -35,3 +35,8 @@ codegen/
 # buildtool cache folder
 .buildtool/
 
+# Ignore all .DS_Store files
+.DS_Store
+
+# Ignore all .DS_Store files recursively within directories
+**/.DS_Store
