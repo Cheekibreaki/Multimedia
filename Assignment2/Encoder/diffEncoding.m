@@ -16,9 +16,10 @@ function diffValues = diffEncoding(values,type)
                     % Assume previous mode is Horizontal (0)
                     diffValues(i, j) = values(i, j) - 0;  
                 elseif strcmp(type, 'mv')
-                    % Assume previous MV is (0, 0)
+                    % Assume previous MV is (0, 0, 0)
                     diffValues(i, j, 1) = values(i, j, 1) - 0; 
                     diffValues(i, j, 2) = values(i, j, 2) - 0;
+                    diffValues(i, j, 3) = values(i, j, 3) - 0;  % Reference frame index
                 end
             else  % Compare with the left neighbor
                 if strcmp(type, 'modes')
@@ -26,6 +27,7 @@ function diffValues = diffEncoding(values,type)
                 elseif strcmp(type, 'mv')
                     diffValues(i, j, 1) = values(i, j, 1) - values(i, j - 1, 1);
                     diffValues(i, j, 2) = values(i, j, 2) - values(i, j - 1, 2);
+                    diffValues(i, j, 3) = values(i, j, 3) - values(i, j - 1, 3);  % Reference frame index
                 end
             end
         end

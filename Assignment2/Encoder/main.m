@@ -10,12 +10,12 @@ decodedFile = '../Outputs/decoded_Y_foreman.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 10;                 % Number of frames to process
-blockSize = 8;                   % Block size for motion estimation
-searchRange = 2;                 % Search range r = 1,4, and 8
-dct_blockSize = 2;
+blockSize = 16;                   % Block size for motion estimation
+searchRange = 8;                 % Search range r = 1,4, and 8
+dct_blockSize = 16;
 QP = 3;
-I_Period = 1; 
-
+I_Period = 10; 
+nRefFrames = 4;                 % Can take value from 1 to 4
 
 % Pre-process
 
@@ -24,11 +24,11 @@ dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
 [paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
 
 % encoder
-encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period)
+encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames);
 
 [total_byte,bytes_list] = decoder(decodedFile);
 %decoder
-compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
+%compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
 %calculatePSNR(decodedFile, paddedOutputFile, width, height, numFrames)
 
 function avgPsnr = calculatePSNR(decodedFile, originalFile, width, height, numFrames)

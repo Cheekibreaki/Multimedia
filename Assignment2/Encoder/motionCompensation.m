@@ -1,11 +1,11 @@
-function predictedFrame = motionCompensation(referenceFrame, motionVectors, blockSize)
+function predictedFrame = motionCompensation(referenceFrames, motionVectors, blockSize)
     % Parameters:
     % referenceFrame - the reference frame (previous frame or hypothetical frame)
     % motionVectors  - motion vectors for each block
     % blockSize      - size of each block 
     
     % Get the size of the reference frame
-    [height, width] = size(referenceFrame);
+    [height, width] = size(referenceFrames{1});
     
     % Initialize the predicted frame with zeros
     predictedFrame = zeros(height, width, 'double');
@@ -21,6 +21,10 @@ function predictedFrame = motionCompensation(referenceFrame, motionVectors, bloc
             % Get the motion vector for this block (dy, dx)
             dy = motionVectors(blockY, blockX, 1);  % Vertical offset
             dx = motionVectors(blockY, blockX, 2);  % Horizontal offset
+            refIdx = motionVectors(blockY, blockX, 3) + 1;  % Reference frame index
+
+            % Extract the appropriate reference frame
+            referenceFrame = referenceFrames{refIdx};
             
             % Compute the coordinates of the reference block based on the motion vector
             refRowStart = row + dy;

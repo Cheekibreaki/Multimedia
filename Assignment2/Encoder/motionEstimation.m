@@ -1,4 +1,4 @@
-function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame, blockSize, searchRange)
+function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrames, blockSize, searchRange)
     % Motion Estimation function that processes blocks in raster order.
     % Calls findBestMatch to find the best matching block in the reference frame.
     %
@@ -19,7 +19,7 @@ function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame
     % Initialize the motion vector array (for storing motion vectors for each block)
     numBlocksX = width / blockSize; 
     numBlocksY = height / blockSize; 
-    motionVectors = zeros(numBlocksY, numBlocksX, 2);  % Stores motion vector for each block.
+    motionVectors = zeros(numBlocksY, numBlocksX, 3);  % Stores motion vector for each block.
 
     totalMAE = 0;  % To keep track of the total MAE across all blocks
     
@@ -29,8 +29,27 @@ function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame
             % Extract the current block from the current frame
             currentBlock = currentFrame(row:row+blockSize-1, col:col+blockSize-1);
 
-            % Find the best matching block in the reference frame using MAE
-            [bestVector, minMAE] = findBestMatch(currentBlock, referenceFrame, row, col, blockSize, searchRange);
+            % Initialize variables for the best match
+            bestVector = [0, 0];
+            bestRefIdx = 0;
+            minMAE = inf;
+            bestL1Norm = inf;
+
+            % Check all reference frames to find the best match
+            for refIdx = 1:length(referenceFrames)
+                referenceFrame = referenceFrames{refIdx};
+
+                % Find the best match within the current reference frame
+                [vector, mae, L1Norm] = findBestMatch(currentBlock, referenceFrame, row, col, blockSize, searchRange);
+
+                % Update if a better match is found
+                if mae < minMAE || (mae == minMAE && L1Norm < bestL1Norm)
+                    minMAE = mae;
+                    bestVector = vector;
+                    bestL1Norm = L1Norm;
+                    bestRefIdx = refIdx;
+                end
+            end
 
             dy = bestVector(1);
             dx = bestVector(2);
@@ -42,7 +61,7 @@ function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame
             % Store the motion vector for this block
             motionVectors(blockY, blockX, 1) = dy;
             motionVectors(blockY, blockX, 2) = dx;
-
+            motionVectors(blockY, blockX, 3) = bestRefIdx - 1;
             % Add the MAE of this block to the total MAE
             totalMAE = totalMAE + minMAE;
 
@@ -56,7 +75,7 @@ function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame
 
 end
 
-function [bestVector, minMAE] = findBestMatch(currentBlock, referenceFrame, row, col, blockSize, searchRange)
+function [bestVector, minMAE, bestL1Norm] = findBestMatch(currentBlock, referenceFrame, row, col, blockSize, searchRange)
     % Find the best matching block using Mean Absolute Error (MAE).
     %
     % Parameters:

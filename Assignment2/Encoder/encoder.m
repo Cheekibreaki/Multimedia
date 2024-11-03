@@ -1,4 +1,4 @@
-function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period)
+function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames)
     % encoderEx3: This function performs motion estimation and motion 
     % compensation to encode a video sequence. It also visualizes the 
     % residuals before and after motion compensation for each frame.
@@ -18,14 +18,14 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
     params.blockSize = blockSize;                        
     params.dct_blockSize = dct_blockSize;           
     params.QP = QP;                   
-    
+    params.nRefFrames = nRefFrames;
    
     % Save the parameters to a MAT-file
     save('../Outputs/headerfile.mat', 'params');
 
     % Write parameters needed for decoder to header file
     headerFile = fopen('../Outputs/headerfile.mat', 'w');
-    fwrite(headerFile, [width, height, numFrames, blockSize, dct_blockSize, QP], 'int32');
+    fwrite(headerFile, [width, height, numFrames, blockSize, dct_blockSize, QP, nRefFrames], 'int32');
     fclose(headerFile);
 
     % Open the padded Y only file
@@ -35,24 +35,20 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
 
     yuvFile = fopen(referenceFile, 'w');
     
-    % For the first frame, use the hypothetical reconstructed frame as reference
-    referenceFrame = 128 * ones(height, width,'uint8');  % height * width = 288 * 352
-    
-    % Initialize the motion vector array (for storing motion vectors for each block)
+    % % For the first frame, use the hypothetical reconstructed frame as reference
+    % referenceFrame = 128 * ones(height, width,'uint8');  % height * width = 288 * 352
 
-    %lastMotionVectors = zeros(ceil(height/blockSize), ceil(width/blockSize),2);    
-    %lastPredictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
-
+    % Initialize a buffer to store reference frames
+    referenceFrames = cell(1, nRefFrames);
+    for i = 1:nRefFrames
+        referenceFrames{i} = 128 * ones(height, width, 'uint8');  % Initialize reference frames
+    end
     
+    pFrameCounter = 0; % count number of p frames since the last intra frame. This is tracked to ensure valid number of reference frames.
 
     for frameIdx = 1:numFrames
     
         currentFrame = fread(fid,[width, height], 'uint8')';
-
-        if frameIdx > 1
-            referenceFrame = reconstructedFrame;  % Use the reconstructed frame as the reference for the next frame
-       
-        end
 
         %determin the frame type
         if frameIdx == 1
@@ -65,23 +61,27 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
 
 
         if isIFrame
+           pFrameCounter = 0;
            [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP);
            MDiffModes = diffEncoding(currPredictionModes,'modes');
            
            Residuals = double(currentFrame) - double(predictedFrame);
            
         else
-           
+            % Inter-frame encoding with motion estimation using multiple reference frames
+            % Only use valid reference frames based on the pFrameCounter
+            validRefFrames = referenceFrames(1:min(pFrameCounter + 1, nRefFrames));
             % Motion estimation
-            [currMotionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame, blockSize, searchRange);        
+            [currMotionVectors, avgMAE] = motionEstimation(currentFrame, validRefFrames, blockSize, searchRange);        
             % Motion compensation to get the predicted frame
-            predictedFrame = motionCompensation(referenceFrame, currMotionVectors, blockSize);
+            predictedFrame = motionCompensation(validRefFrames, currMotionVectors, blockSize);
             MDiffMV = diffEncoding(currMotionVectors,'mv');
             
             % Calculate residuals 
             Residuals = double(currentFrame) - double(predictedFrame);
+            % Increment the P-frame counter
+            pFrameCounter = min(pFrameCounter + 1, nRefFrames);
         end
-        
         
         
         quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP);      
@@ -95,6 +95,12 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
             residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
             save(residualFile, 'encodedResidues');
 
+            % Clear all previous reference frames
+            referenceFrames = cell(1, nRefFrames);
+            for i = 1:nRefFrames
+                referenceFrames{i} = 128 * ones(height, width, 'uint8');  
+            end
+
       
         else
 
@@ -106,14 +112,18 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
             save(residualFile, 'encodedResidues');
         end
 
-        
-        fwrite(yuvFile, referenceFrame', 'uint8');
-        
+
         % Reconstruct the frame at the encoder side to create a closed loop 
         % Use it as the reference frame for the next frame
         
         compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
         reconstructedFrame = double(predictedFrame) + double(compresiduals);
+
+        fwrite(yuvFile, reconstructedFrame', 'uint8');
+
+        % Update the reference frames using a sliding window
+        referenceFrames = [{reconstructedFrame}, referenceFrames(1:nRefFrames - 1)];
+
         fprintf('Processed frame %d\n', frameIdx);
        
         
@@ -121,5 +131,6 @@ function encoderEx4(referenceFile, paddedOutputFile, numFrames, width, height, b
     
     % Close the file
     fclose(fid);
+    fclose(yuvFile);
 
 end

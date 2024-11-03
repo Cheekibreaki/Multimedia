@@ -26,7 +26,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
         
         motionVectorRevEGC = exp_golomb_decode(encodedMotionVector1d);
         motionVector2d = invzigzag(motionVectorRevEGC, mvheight, length(motionVectorRevEGC)/mvheight);
-        decodedMotionVector3d = reshape_2d_to_3d(motionVector2d, mvwidth, mvheight, 2);
+        decodedMotionVector3d = reshape_2d_to_3d(motionVector2d, mvwidth, mvheight, 3);
 
     elseif frame_type == 1
     
@@ -47,6 +47,8 @@ function matrix_3d = reshape_2d_to_3d(reshaped_2d, rows, cols, depth)
     % Each row block in the original 3D matrix is represented in flattened form in reshaped_2d
     matrix_3d = reshape(reshaped_2d, cols, rows, depth);
 end
+
+
 
 function matrix = invzigzag(zigzag_order, rows, cols)
     % Inverse Zigzag function to reorder a 1D array back into a 2D matrix

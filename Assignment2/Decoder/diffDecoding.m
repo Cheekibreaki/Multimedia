@@ -16,9 +16,10 @@ function originalValues = diffDecoding(values, type)
                     % Assume previous mode is Horizontal (0)
                     originalValues(i, j) = values(i, j) + 0;
                 elseif strcmp(type, 'mv')
-                    % Assume previous MV is (0, 0)
+                    % Assume previous MV is (0, 0, 0)
                     originalValues(i, j, 1) = values(i, j, 1) + 0;
                     originalValues(i, j, 2) = values(i, j, 2) + 0;
+                    originalValues(i, j, 3) = values(i, j, 3) + 0;
                 end
             else  % Add the differential value to the previous block's value
                 if strcmp(type, 'modes')
@@ -26,6 +27,7 @@ function originalValues = diffDecoding(values, type)
                 elseif strcmp(type, 'mv')
                     originalValues(i, j, 1) = values(i, j, 1) + originalValues(i, j - 1, 1);
                     originalValues(i, j, 2) = values(i, j, 2) + originalValues(i, j - 1, 2);
+                    originalValues(i, j, 3) = values(i, j, 3) + originalValues(i, j - 1, 3);
                 end
             end
         end
