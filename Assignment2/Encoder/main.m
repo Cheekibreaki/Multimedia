@@ -10,13 +10,14 @@ decodedFile = '../Outputs/decoded_Y_foreman.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 10;                 % Number of frames to process
-blockSize = 16;                   % Block size for motion estimation
 searchRange = 8;                 % Search range r = 1,4, and 8
-dct_blockSize = 16;
 QP = 3;
+j = 3;
+blockSize = 2^j;                   % Block size for motion estimation
+dct_blockSize = 2^j;
 I_Period = 10; 
 nRefFrames = 4;                 % Can take value from 1 to 4
-
+VBSEnable = true;
 % Pre-process
 
 dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
@@ -24,8 +25,7 @@ dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
 [paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
 
 % encoder
-encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames);
-
+encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,j,VBSEnable);
 [total_byte,bytes_list] = decoder(decodedFile);
 %decoder
 %compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);

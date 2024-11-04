@@ -1,4 +1,4 @@
-function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames)
+function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,j,VBSEnable)
     % encoderEx3: This function performs motion estimation and motion 
     % compensation to encode a video sequence. It also visualizes the 
     % residuals before and after motion compensation for each frame.
@@ -19,7 +19,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
     params.dct_blockSize = dct_blockSize;           
     params.QP = QP;                   
     params.nRefFrames = nRefFrames;
-   
+    
     % Save the parameters to a MAT-file
     save('../Outputs/headerfile.mat', 'params');
 
@@ -44,6 +44,10 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         referenceFrames{i} = 128 * ones(height, width, 'uint8');  % Initialize reference frames
     end
     
+
+    vbs = VBS();
+    vbs = vbs.Create_VBS_matrix(width, height, j, VBSEnable);
+
     pFrameCounter = 0; % count number of p frames since the last intra frame. This is tracked to ensure valid number of reference frames.
 
     for frameIdx = 1:numFrames
@@ -72,7 +76,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             % Only use valid reference frames based on the pFrameCounter
             validRefFrames = referenceFrames(1:min(pFrameCounter + 1, nRefFrames));
             % Motion estimation
-            [currMotionVectors, avgMAE] = motionEstimation(currentFrame, validRefFrames, blockSize, searchRange);        
+            [currMotionVectors, avgMAE] = vbs_motionEstimation(currentFrame, validRefFrames, blockSize, searchRange,vbs);        
             % Motion compensation to get the predicted frame
             predictedFrame = motionCompensation(validRefFrames, currMotionVectors, blockSize);
             MDiffMV = diffEncoding(currMotionVectors,'mv');
