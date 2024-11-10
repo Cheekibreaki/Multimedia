@@ -1,11 +1,9 @@
-function predictedFrame = motionCompensation(referenceFrames, motionVectors, blockSize)
+function predictedFrame = motionCompensation(referenceFrames, motionVectors, blockSize, width, height, FMEEnable)
     % Parameters:
     % referenceFrame - the reference frame (previous frame or hypothetical frame)
     % motionVectors  - motion vectors for each block
     % blockSize      - size of each block 
     
-    % Get the size of the reference frame
-    [height, width] = size(referenceFrames{1});
     
     % Initialize the predicted frame with zeros
     predictedFrame = zeros(height, width, 'double');
@@ -31,7 +29,12 @@ function predictedFrame = motionCompensation(referenceFrames, motionVectors, blo
             refColStart = col + dx;
 
             % Extract the reference block from the reference frame
-            refBlock = referenceFrame(refRowStart:(refRowStart + blockSize - 1), refColStart:(refColStart + blockSize - 1));
+            if FMEEnable
+                refBlock = referenceFrame(refRowStart:2:(refRowStart + 2* blockSize - 2), refColStart:2:(refColStart + 2 * blockSize - 2));
+            else
+                refBlock = referenceFrame(refRowStart:(refRowStart + blockSize - 1), refColStart:(refColStart + blockSize - 1));
+            end
+            
             
             % Place the reference block into the predicted frame
             predictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,refBlock)));

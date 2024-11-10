@@ -1,4 +1,4 @@
-function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,j,VBSEnable)
+function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,j,VBSEnable, FMEEnable)
     % encoderEx3: This function performs motion estimation and motion 
     % compensation to encode a video sequence. It also visualizes the 
     % residuals before and after motion compensation for each frame.
@@ -19,13 +19,15 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
     params.dct_blockSize = dct_blockSize;           
     params.QP = QP;                   
     params.nRefFrames = nRefFrames;
+    params.VBSEnable = VBSEnable;
+    params.FMEEnable = FMEEnable;
     
     % Save the parameters to a MAT-file
     save('../Outputs/headerfile.mat', 'params');
 
     % Write parameters needed for decoder to header file
     headerFile = fopen('../Outputs/headerfile.mat', 'w');
-    fwrite(headerFile, [width, height, numFrames, blockSize, dct_blockSize, QP, nRefFrames], 'int32');
+    fwrite(headerFile, [width, height, numFrames, blockSize, dct_blockSize, QP, nRefFrames, VBSEnable, FMEEnable], 'int32');
     fclose(headerFile);
 
     % Open the padded Y only file
@@ -35,7 +37,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
 
     yuvFile = fopen(referenceFile, 'w');
     
-    % % For the first frame, use the hypothetical reconstructed frame as reference
+    % For the first frame, use the hypothetical reconstructed frame as reference
     % referenceFrame = 128 * ones(height, width,'uint8');  % height * width = 288 * 352
 
     % Initialize a buffer to store reference frames
@@ -44,6 +46,12 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         referenceFrames{i} = 128 * ones(height, width, 'uint8');  % Initialize reference frames
     end
     
+    % Initialize a buffer to store interpolated reference frames.
+    % Note that the interpolated size is not exactly 2*height and 2*width becasue we cannot interpolate the last row and last col.
+    interpolatedReferenceFrames = cell(1, nRefFrames);
+    for i = 1:nRefFrames
+        interpolatedReferenceFrames{i} = 128 * ones(2*height - 1, 2*width - 1, 'uint8');
+    end
 
     vbs = VBS();
     vbs = vbs.Create_VBS_matrix(width, height, j, VBSEnable);
@@ -75,10 +83,18 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             % Inter-frame encoding with motion estimation using multiple reference frames
             % Only use valid reference frames based on the pFrameCounter
             validRefFrames = referenceFrames(1:min(pFrameCounter + 1, nRefFrames));
+            validInterpolatedRefFrames = interpolatedReferenceFrames(1:min(pFrameCounter + 1, nRefFrames));
+            
+            if FMEEnable
+            [currMotionVectors, avgMAE] = fractionalME(currentFrame,  validInterpolatedRefFrames, blockSize, searchRange);
+            predictedFrame = motionCompensation(validInterpolatedRefFrames, currMotionVectors, blockSize, width, height,FMEEnable);
+            else
             % Motion estimation
-            [currMotionVectors, avgMAE] = vbs_motionEstimation(currentFrame, validRefFrames, blockSize, searchRange,vbs);        
+            [currMotionVectors, avgMAE] = vbs_motionEstimation(currentFrame, validRefFrames, blockSize, searchRange,vbs);
             % Motion compensation to get the predicted frame
-            predictedFrame = motionCompensation(validRefFrames, currMotionVectors, blockSize);
+            predictedFrame = motionCompensation(validRefFrames, currMotionVectors, blockSize, width, height, FMEEnable);
+            end
+
             MDiffMV = diffEncoding(currMotionVectors,'mv');
             
             % Calculate residuals 
@@ -100,12 +116,14 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             save(residualFile, 'encodedResidues');
 
             % Clear all previous reference frames
-            referenceFrames = cell(1, nRefFrames);
             for i = 1:nRefFrames
                 referenceFrames{i} = 128 * ones(height, width, 'uint8');  
             end
 
-      
+            for i = 1:nRefFrames
+                interpolatedReferenceFrames{i} = 128 * ones(height*2 - 1, width*2 -1, 'uint8');  
+            end
+
         else
 
             [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
@@ -122,12 +140,18 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         
         compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
         reconstructedFrame = double(predictedFrame) + double(compresiduals);
+        reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
+        interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
+        
+        % imshow(uint8(interpolatedReconstructedFrame));
+        % title(sprintf('Interpolated Reconstructed Frame %d', frameIdx));
+        % pause(0.1); % Pause for a short time to visualize each frame
 
         fwrite(yuvFile, reconstructedFrame', 'uint8');
 
         % Update the reference frames using a sliding window
         referenceFrames = [{reconstructedFrame}, referenceFrames(1:nRefFrames - 1)];
-
+        interpolatedReferenceFrames = [{interpolatedReconstructedFrame}, interpolatedReferenceFrames(1:nRefFrames - 1)];
         fprintf('Processed frame %d\n', frameIdx);
        
         

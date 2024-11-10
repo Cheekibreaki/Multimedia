@@ -15,7 +15,7 @@ function [total_bytes,bytes_list] = decoder(filename)
 
     % Read sequence parameters from header file
     headerFile = fopen('../Outputs/headerfile.mat', 'r');
-    params = fread(headerFile, 7, 'int32');  % [width, height, numFrames, blockSize, dct_blockSize, QP]
+    params = fread(headerFile, 9, 'int32');  % [width, height, numFrames, blockSize, dct_blockSize, QP]
     % Extract individual parameters
     width = params(1);
     height = params(2);
@@ -24,6 +24,8 @@ function [total_bytes,bytes_list] = decoder(filename)
     dct_blockSize = params(5);
     QP = params(6);
     nRefFrames = params(7);
+    VBSEnable = params(8);
+    FMEEnable = params(9);
     % Close the header file
     fclose(headerFile);
     total_bytes = 0;
@@ -34,6 +36,13 @@ function [total_bytes,bytes_list] = decoder(filename)
     referenceFrames = cell(1, nRefFrames);
     for i = 1:nRefFrames
         referenceFrames{i} = 128 * ones(height, width, 'uint8');  % Initialize reference frames
+    end
+
+    % Initialize a buffer to store interpolated reference frames.
+    % Note that the interpolated size is not exactly 2*height and 2*width becasue we cannot interpolate the last row and last col.
+    interpolatedReferenceFrames = cell(1, nRefFrames);
+    for i = 1:nRefFrames
+        interpolatedReferenceFrames{i} = 128 * ones(2*height - 1, 2*width - 1, 'uint8');
     end
 
     pFrameCounter = 0;  % Counter for the number of P-frames since the last Intra frame
@@ -74,33 +83,52 @@ function [total_bytes,bytes_list] = decoder(filename)
 
             % Add the approximated residuals to the predicted frame to reconstruct
             reconstructedFrame = double(intraCompFrame);
+            % Clip the values to be in the range [0, 255] 
+            reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
+            interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
+            
+             %Save and visualize the Mode overlays
+            saveVisualizePredictionInfo(reconstructedFrame, predictionModes, frameIdx, isIFrame,FMEEnable, blockSize);
 
             for i = 1:nRefFrames
                 referenceFrames{i} = 128 * ones(height, width, 'uint8');  % Re-initialize reference frames
             end
           
+
+             for i = 1:nRefFrames
+                interpolatedReferenceFrames{i} = 128 * ones(height*2 - 1, width*2 -1, 'uint8');  
+            end
+
         else
             [motionVectors,nonimportant1,quantizedResiduals] = entropyDecode(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth,   predwidth, predheight,  reswidth, resheight);
             % Load the motion vectors and approximated residuals for the current frame
             motionVectors = diffDecoding(motionVectors,'mv');
 
             % Perform motion compensation to get the predicted frame
-            predictedFrame = motionCompensation(referenceFrames, motionVectors, blockSize);
+            if FMEEnable
+                predictedFrame = motionCompensation(interpolatedReferenceFrames, motionVectors, blockSize, width, height, FMEEnable);
+            else 
+                predictedFrame = motionCompensation(referenceFrames, motionVectors, blockSize, width, height, FMEEnable);
+            end
+            
             compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
 
             % Add the approximated residuals to the predicted frame to reconstruct
             reconstructedFrame = double(predictedFrame) + double(compresiduals);
-
+            % Clip the values to be in the range [0, 255] 
+            reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
+            interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
              
-           % Save the P-frame with overlays as an image
-            saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx);
+           % Save the P-frame with reference frame number(color) overlays as an image
+            %saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx)
+
+            %Save and visualize the MV overlays
+            saveVisualizePredictionInfo(reconstructedFrame, motionVectors, frameIdx, isIFrame, FMEEnable,blockSize);
           
             % Increment the P-frame counter
             pFrameCounter = min(pFrameCounter + 1, nRefFrames); 
         end
         
-        % Clip the values to be in the range [0, 255] and convert to uint8
-        % reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
         
 
         % Write the decoded frame to the output file
@@ -108,6 +136,7 @@ function [total_bytes,bytes_list] = decoder(filename)
 
         % Update the reference frames using a sliding window
         referenceFrames = [{reconstructedFrame}, referenceFrames(1:nRefFrames - 1)];
+        interpolatedReferenceFrames = [{interpolatedReconstructedFrame}, interpolatedReferenceFrames(1:nRefFrames - 1)];
         
         fprintf('Decoded frame %d\n', frameIdx);
     end
@@ -150,3 +179,61 @@ function saveVisualizeReferenceFrames(frame, motionVectors, frameIdx)
     saveas(gcf, sprintf('../Outputs/Frame_%d_Visualize_nReferenceFrames.png', frameIdx));  % Save the figure as an image
     %close; 
 end
+
+function saveVisualizePredictionInfo(frame, info, frameIdx, isIFrame,FMEEnable, blockSize)
+    % Helper function to visualize prediction info
+    % For I-frames, info = predictionModes (0 for horizontal, 1 for vertical)
+    % For P-frames, info = motionVectors (dy, dx for each block)
+     % Adjust these settings to ensure uniform arrowhead sizes and thinner lines
+    arrowLineWidth = 0.5;  % Thinner lines
+    arrowHeadSize = 2;     % Uniform arrowhead size
+    figure;
+    imshow(uint8(frame), []);
+    hold on;
+    
+    [numBlocksY, numBlocksX] = size(info(:,:,1));
+    halfBlockSize = blockSize / 2;
+    if isIFrame
+        % Visualize prediction modes for I-frames
+        for by = 1:numBlocksY
+            for bx = 1:numBlocksX
+                mode = info(by, bx);
+                x = (bx - 1) * blockSize + halfBlockSize;
+                y = (by - 1) * blockSize + halfBlockSize;
+                
+                if mode == 0
+                    % Horizontal arrow
+                    quiver(x - halfBlockSize, y, blockSize, 0, 'Color', 'r', 'MaxHeadSize', 1);
+                elseif mode == 1
+                    % Vertical arrow
+                    quiver(x, y - halfBlockSize, 0, blockSize, 'Color', 'b', 'MaxHeadSize', 1);
+                end
+            end
+        end
+    else
+        % Visualize motion vectors for P-frames
+        for by = 1:numBlocksY
+            for bx = 1:numBlocksX
+                if FMEEnable
+                    dy = info(by, bx, 1)/2;
+                    dx = info(by, bx, 2)/2;
+                else
+                    dy = info(by, bx, 1);
+                    dx = info(by, bx, 2);
+                end
+                x = (bx - 1) * blockSize + halfBlockSize;
+                y = (by - 1) * blockSize + halfBlockSize;
+                
+                quiver(x, y, dx, dy, 'Color', 'k', ...
+                       'LineWidth', arrowLineWidth, 'MaxHeadSize', arrowHeadSize);
+
+            end
+        end
+    end
+
+    hold off;
+    % Save the figure as an image
+    saveas(gcf, sprintf('../Outputs/PredictionInfo_Frame_%d.png', frameIdx));
+    close;
+end
+
