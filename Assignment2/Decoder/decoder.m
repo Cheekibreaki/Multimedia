@@ -15,7 +15,7 @@ function [total_bytes,bytes_list] = decoder(filename)
 
     % Read sequence parameters from header file
     headerFile = fopen('../Outputs/headerfile.mat', 'r');
-    params = fread(headerFile, 9, 'int32');  % [width, height, numFrames, blockSize, dct_blockSize, QP]
+    params = fread(headerFile, 10, 'int32');  % [width, height, numFrames, blockSize, dct_blockSize, QP]
     % Extract individual parameters
     width = params(1);
     height = params(2);
@@ -26,6 +26,7 @@ function [total_bytes,bytes_list] = decoder(filename)
     nRefFrames = params(7);
     VBSEnable = params(8);
     FMEEnable = params(9);
+    FastME = params(10);
     % Close the header file
     fclose(headerFile);
     total_bytes = 0;
@@ -88,7 +89,7 @@ function [total_bytes,bytes_list] = decoder(filename)
             interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
             
              %Save and visualize the Mode overlays
-            saveVisualizePredictionInfo(reconstructedFrame, predictionModes, frameIdx, isIFrame,FMEEnable, blockSize);
+            %saveVisualizePredictionInfo(reconstructedFrame, predictionModes, frameIdx, isIFrame,FMEEnable, blockSize);
 
             for i = 1:nRefFrames
                 referenceFrames{i} = 128 * ones(height, width, 'uint8');  % Re-initialize reference frames
@@ -120,10 +121,10 @@ function [total_bytes,bytes_list] = decoder(filename)
             interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
              
            % Save the P-frame with reference frame number(color) overlays as an image
-            %saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx)
+            saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx)
 
             %Save and visualize the MV overlays
-            saveVisualizePredictionInfo(reconstructedFrame, motionVectors, frameIdx, isIFrame, FMEEnable,blockSize);
+            % saveVisualizePredictionInfo(reconstructedFrame, motionVectors, frameIdx, isIFrame, FMEEnable,blockSize);
           
             % Increment the P-frame counter
             pFrameCounter = min(pFrameCounter + 1, nRefFrames); 

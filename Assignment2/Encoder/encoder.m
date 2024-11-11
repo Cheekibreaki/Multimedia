@@ -1,4 +1,4 @@
-function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,j,VBSEnable, FMEEnable)
+function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,j,VBSEnable, FMEEnable, FastME)
     % encoderEx3: This function performs motion estimation and motion 
     % compensation to encode a video sequence. It also visualizes the 
     % residuals before and after motion compensation for each frame.
@@ -21,13 +21,13 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
     params.nRefFrames = nRefFrames;
     params.VBSEnable = VBSEnable;
     params.FMEEnable = FMEEnable;
-    
+    params.FastME = FastME;
     % Save the parameters to a MAT-file
     save('../Outputs/headerfile.mat', 'params');
 
     % Write parameters needed for decoder to header file
     headerFile = fopen('../Outputs/headerfile.mat', 'w');
-    fwrite(headerFile, [width, height, numFrames, blockSize, dct_blockSize, QP, nRefFrames, VBSEnable, FMEEnable], 'int32');
+    fwrite(headerFile, [width, height, numFrames, blockSize, dct_blockSize, QP, nRefFrames, VBSEnable, FMEEnable, FastME], 'int32');
     fclose(headerFile);
 
     % Open the padded Y only file

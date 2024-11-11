@@ -30,6 +30,8 @@ function predictedFrame = motionCompensation(referenceFrames, motionVectors, blo
 
             % Extract the reference block from the reference frame
             if FMEEnable
+                refRowStart = 2*row-1 + dy;
+                refColStart = 2*col-1 + dx;
                 refBlock = referenceFrame(refRowStart:2:(refRowStart + 2* blockSize - 2), refColStart:2:(refColStart + 2 * blockSize - 2));
             else
                 refBlock = referenceFrame(refRowStart:(refRowStart + blockSize - 1), refColStart:(refColStart + blockSize - 1));
