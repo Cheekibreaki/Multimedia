@@ -82,7 +82,7 @@ function [total_bytes,bytes_list] = decoder(filename)
         else
             [motionVectors,nonimportant1,quantizedResiduals] = entropyDecode(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth,   predwidth, predheight,  reswidth, resheight);
             % Load the motion vectors and approximated residuals for the current frame
-            motionVectors = diffDecoding(motionVectors,'mv');
+            % motionVectors = diffDecoding(motionVectors,'mv');
 
             % Perform motion compensation to get the predicted frame
             predictedFrame = motionCompensation(referenceFrames, motionVectors, blockSize);

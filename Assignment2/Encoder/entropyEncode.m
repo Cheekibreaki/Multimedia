@@ -1,4 +1,4 @@
-function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyEncode(frame_type, motionVector3d, predicitonModes2d, residues2d)
+function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyEncode(frame_type, motionVector3d, predicitonModes2d, residues2d,vbs_matrix)
     % Input:
     % frame_type: 1 for I-frame, 0 for P-frame 
     % pred_diff: array containing differential prediction information (modes for intra or motion vectors for inter)
@@ -12,10 +12,51 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
     encodedPredicitonModes = [];
     encodedResidues = [];
     if frame_type == 0  % Assuming data handling for P-frames
-
-        motionVector2d = reshape_3d_to_2d(motionVector3d);
-        motionVector1d = zigzag(motionVector2d);
-        encodedMotionVector = exp_golomb_encode(motionVector1d);
+       if exist('vbs_matrix', 'var')
+            % motionVector3d is 36x44x3, vbs_matrix is 36x44
+            % Fetch a 2x2 block from each within vbs_matrix and motionVector3d
+            
+            [rows, cols] = size(vbs_matrix);
+            resultmotionVector1d = [];
+        
+            % Loop through vbs_matrix and motionVector3d with a 2x2 block size
+            for row = 1:2:rows
+                for col = 1:2:cols
+                    % Extract the current 2x2 block from vbs_matrix
+                    vbs_block = vbs_matrix(row:row+1, col:col+1);
+                    
+                    % Extract the corresponding 2x2x3 block from motionVector3d
+                    motion_block = motionVector3d(row:row+1, col:col+1, :);
+                    
+                    if all(vbs_block(:) == 0)  % If this 2x2 block in vbs_matrix is all zeros
+                        % Fetch the entire 2x2x3 block from motionVector3d
+                        motionVector2d = reshape_3d_to_2d(motion_block);
+                        motionVector1d = zigzag(motionVector2d);
+                        motionVector1d = [0, motionVector1d];  % Prefix with 0 to indicate all zeros
+                        resultmotionVector1d = [resultmotionVector1d, motionVector1d];  % Append to the result
+                    elseif all(vbs_block(:) == 1)  % If this 2x2 block in vbs_matrix is all ones
+                        % Fetch the 1x1x3 top-left element of the 2x2x3 motionVector3d block
+                        top_left_block = motion_block(1, 1, :);
+                        motionVector2d = reshape_3d_to_2d(top_left_block);
+                        motionVector1d = zigzag(motionVector2d);
+                        motionVector1d = [1, motionVector1d];  % Prefix with 1 to indicate all ones
+                        resultmotionVector1d = [resultmotionVector1d, motionVector1d];  % Append to the result
+                    else
+                        error('ErrorID:1', 'a block can not contain both 1 and 0!');
+                        %This shouldn't happen! something goes wrong
+                    end
+                end
+            end
+    
+            % Encode the result using Exp-Golomb encoding
+            encodedMotionVector = exp_golomb_encode(resultmotionVector1d);
+            a=1
+        else
+            % For block encoding if vbs_matrix does not exist
+            motionVector2d = reshape_3d_to_2d(motionVector3d);
+            motionVector1d = zigzag(motionVector2d);
+            encodedMotionVector = exp_golomb_encode(motionVector1d);
+        end
 
     elseif frame_type == 1
         predicitonModes1d = zigzag(predicitonModes2d);

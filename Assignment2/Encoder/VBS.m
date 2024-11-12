@@ -43,19 +43,6 @@ classdef VBS
             end
         end
         
-        function rd_cost = compute_rd_cost(~)
-            % Placeholder function to compute the RD Cost for a single block
-            % For demonstration purposes, we're using a random value
-            % In real cases, this would involve calculating distortion + rate
-            rd_cost = rand() * 100;  % Random value representing RD cost
-        end
-        
-        function rd_cost = compute_4rd_cost(~)
-            % Placeholder function to compute the RD Cost for four sub-blocks
-            % For demonstration purposes, we're using a random value
-            % In real cases, this would involve calculating distortion + rate
-            rd_cost = rand() * 100;  % Random value representing RD cost
-        end
     end
 end
 

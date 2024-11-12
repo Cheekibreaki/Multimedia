@@ -1,4 +1,4 @@
-function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,j,VBSEnable)
+function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable)
     % encoderEx3: This function performs motion estimation and motion 
     % compensation to encode a video sequence. It also visualizes the 
     % residuals before and after motion compensation for each frame.
@@ -45,9 +45,6 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
     end
     
 
-    vbs = VBS();
-    vbs = vbs.Create_VBS_matrix(width, height, j, VBSEnable);
-
     pFrameCounter = 0; % count number of p frames since the last intra frame. This is tracked to ensure valid number of reference frames.
 
     for frameIdx = 1:numFrames
@@ -72,21 +69,45 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
            Residuals = double(currentFrame) - double(predictedFrame);
            
         else
+            % for each large block (2xblockzie)
+            %     split it, 
+            %     calculate find best match and motion compensation
+            %     quantization(qp-1)
+            %     inv quantization
+            %     reconstruct 
+            % 
+            %     not split it
+            %     calculate find best match and motion compensation
+            %     quantization(qp)
+            %     inv quantization
+            %     reconstruct 
+            % 
+            %    compare using 
+            % 
+            %     D = SAD of reconstructs
+            % 
+            % 
+            %     R = use EntropyEncode on block level residue data
+            %     residual only!!!!!!!
+            %     J = D + Lambda R 
+
+
+
+
             % Inter-frame encoding with motion estimation using multiple reference frames
             % Only use valid reference frames based on the pFrameCounter
             validRefFrames = referenceFrames(1:min(pFrameCounter + 1, nRefFrames));
             % Motion estimation
-            [currMotionVectors, avgMAE] = vbs_motionEstimation(currentFrame, validRefFrames, blockSize, searchRange,vbs);        
+            [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, validRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda);        
             % Motion compensation to get the predicted frame
             predictedFrame = motionCompensation(validRefFrames, currMotionVectors, blockSize);
-            MDiffMV = diffEncoding(currMotionVectors,'mv');
-            
+            % MDiffMV = diffEncoding(currMotionVectors,'mv');
+            MDiffMV = currMotionVectors
             % Calculate residuals 
             Residuals = double(currentFrame) - double(predictedFrame);
             % Increment the P-frame counter
             pFrameCounter = min(pFrameCounter + 1, nRefFrames);
         end
-        
         
         quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP);      
         
@@ -108,7 +129,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
       
         else
 
-            [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
+            [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
             
             motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
             save(motionVectorFile, 'encodedMDiff');
