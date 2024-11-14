@@ -26,6 +26,7 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
     vbs_matrix = -1 * ones(numBlocksY, numBlocksX);
     totalMAE = 0;  % To keep track of the total MAE across all blocks
 
+    previous_motion_vector_block = zeros(1, 1, 3);
 
     for blockY = 1:2:numBlocksY
         for blockX = 1:2:numBlocksX
@@ -94,8 +95,8 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             % Compute SAD for reconstructed_large
             SAD_large = sum(sum(abs(double(currentBlock) - double(reconstructed_large))));
             
-            MDiffMV_large = diffEncoding(motionVector_block_large,'mv');
-            MDiffMV_split = diffEncoding(motionVector_block_split,'mv');
+            [MDiffMV_large,previous_motion_vector_block_large] = diffEncoding_block(motionVector_block_large,'mv',previous_motion_vector_block);
+            [MDiffMV_split,previous_motion_vector_block_split] = diffEncoding_block(motionVector_block_split,'mv',previous_motion_vector_block);
 
             [encodedMDiff_large,nonimporatant1,encodedResidues_large] = entropyEncode(false, MDiffMV_large, [], quantizedResiduals_large);
             [encodedMDiff_split,nonimporatant1,encodedResidues_split] = entropyEncode(false, MDiffMV_split, [], quantizedResiduals_split);
@@ -119,10 +120,12 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
                 motionVector_block = motionVector_block_large;
                 total_minMAE = total_minMAE_large;
                 vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 1;
+                previous_motion_vector_block = previous_motion_vector_block_large;
             else
                 motionVector_block = motionVector_block_split;
                 total_minMAE = total_minMAE_split;
                 vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 0;
+                previous_motion_vector_block = previous_motion_vector_block_split;
             end
 
             % Store the motion vectors in the corresponding positions

@@ -28,7 +28,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
         idx = 1;
         [rows, cols] = deal(mvheight, mvwidth);
         decodedMotionVector3d = zeros(rows, cols, 3);
-
+        previous_motion_vector_block = zeros(1,1,3);
         % Loop through the decoded values in a 2x2 block size
         for row = 1:2:rows
             for col = 1:2:cols
@@ -42,6 +42,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
                     idx = idx + 12;
                     motionVector2d = invzigzag(motionVector1d, 2,2 * 3);
                     motion_block = reshape_2d_to_3d(motionVector2d, 2, 2, 3);
+                    % [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
                     decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
                 elseif prefix == 1
                     % Decode the top-left 1x1x3 element
@@ -51,10 +52,12 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
                     top_left_block = reshape_2d_to_3d(motionVector2d, 1, 1, 3);
                     % Assign the top-left block to all elements in the 2x2 block
                     motion_block = repmat(top_left_block, 2, 2);
+                    % [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
                     decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
                 else
                     error('ErrorID:1', 'Invalid prefix encountered during decoding!');
                 end
+                
             end
         end
 
