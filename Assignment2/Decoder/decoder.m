@@ -33,6 +33,12 @@ function [total_bytes,bytes_list] = decoder(filename)
     % Open file for dumping decoded frames
     fid = fopen(filename, 'w');
 
+    % Ensure the output directory exists
+    outputDir = 'Outputs/Decoded_Frames';
+    if ~exist(outputDir, 'dir')
+        mkdir(outputDir);
+    end
+
     % Initialize a buffer to store reference frames
     referenceFrames = cell(1, nRefFrames);
     for i = 1:nRefFrames
@@ -89,7 +95,7 @@ function [total_bytes,bytes_list] = decoder(filename)
             interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
             
              %Save and visualize the Mode overlays
-            %saveVisualizePredictionInfo(reconstructedFrame, predictionModes, frameIdx, isIFrame,FMEEnable, blockSize);
+          %  saveVisualizePredictionInfo(reconstructedFrame, predictionModes, frameIdx, isIFrame,FMEEnable, blockSize);
 
             for i = 1:nRefFrames
                 referenceFrames{i} = 128 * ones(height, width, 'uint8');  % Re-initialize reference frames
@@ -124,13 +130,15 @@ function [total_bytes,bytes_list] = decoder(filename)
             saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx)
 
             %Save and visualize the MV overlays
-            % saveVisualizePredictionInfo(reconstructedFrame, motionVectors, frameIdx, isIFrame, FMEEnable,blockSize);
+            %saveVisualizePredictionInfo(motionVectors, frameIdx, isIFrame, FMEEnable,blockSize);
           
             % Increment the P-frame counter
             pFrameCounter = min(pFrameCounter + 1, nRefFrames); 
         end
         
-        
+        % Save the reconstructed frame as an image
+        outputFilePath = fullfile(outputDir, sprintf('Decoded_Frame_%d.png', frameIdx));
+        imwrite(uint8(reconstructedFrame), outputFilePath);
 
         % Write the decoded frame to the output file
         fwrite(fid, reconstructedFrame', 'uint8');

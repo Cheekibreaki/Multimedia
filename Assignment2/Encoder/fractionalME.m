@@ -43,8 +43,8 @@ function [motionVectors, avgMAE] = fractionalME(currentFrame, interpolatedRefere
                 [vector, mae, L1Norm] = findBestMatchFractionalPixel(currentBlock, referenceFrame, row, col, blockSize, searchRange);
 
                 % Testing FME
-                 % predictedMV = [1,1];
-                 % [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, row, col, blockSize, searchRange, predictedMV);
+                  % predictedMV = [1,1];
+                  % [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, row, col, blockSize, searchRange, predictedMV);
 
                 % Update if a better match is found
                 if mae < minMAE || (mae == minMAE && L1Norm < bestL1Norm)
