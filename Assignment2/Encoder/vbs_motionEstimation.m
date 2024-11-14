@@ -1,6 +1,3 @@
-
-
- 
 function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, referenceFrames, blockSize, searchRange, dct_blockSize,QP,lambda)
     % Motion Estimation function that processes blocks in raster order.
     % Calls findBestMatch to find the best matching block in the reference frame.

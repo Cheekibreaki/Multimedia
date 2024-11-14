@@ -1,4 +1,4 @@
-function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight)
+function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight,VBSEnable)
     
     %switch the order of width & height
     temp = mvwidth;
@@ -23,45 +23,52 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
     decodedPredicitonModes2d = [];
     decodedResidues2d = [];
     if frame_type == 0  % Assuming data handling for P-frames
-        % Decoding motion vectors using the structure from the encoding algorithm
-        motionVectorRevEGC = exp_golomb_decode(encodedMotionVector1d);
-        idx = 1;
-        [rows, cols] = deal(mvheight, mvwidth);
-        decodedMotionVector3d = zeros(rows, cols, 3);
-        previous_motion_vector_block = zeros(1,1,3);
-        % Loop through the decoded values in a 2x2 block size
-        for row = 1:2:rows
-            for col = 1:2:cols
-                % Extract prefix (0 or 1) from the encoded data
-                prefix = motionVectorRevEGC(idx);
-                idx = idx + 1;
-                
-                if prefix == 0
-                    % Decode the entire 2x2x3 block
-                    motionVector1d = motionVectorRevEGC(idx:idx+11);
-                    idx = idx + 12;
-                    motionVector2d = invzigzag(motionVector1d, 2,2 * 3);
-                    motion_block = reshape_2d_to_3d(motionVector2d, 2, 2, 3);
-                    [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
-                    decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
-                elseif prefix == 1
-                    % Decode the top-left 1x1x3 element
-                    motionVector1d = motionVectorRevEGC(idx:idx+2);
-                    idx = idx + 3;
-                    motionVector2d = invzigzag(motionVector1d, 1, 3);
-                    top_left_block = reshape_2d_to_3d(motionVector2d, 1, 1, 3);
-                    % Assign the top-left block to all elements in the 2x2 block
+        if VBSEnable
+            % Decoding motion vectors using the structure from the encoding algorithm
+            motionVectorRevEGC = exp_golomb_decode(encodedMotionVector1d);
+            idx = 1;
+            [rows, cols] = deal(mvheight, mvwidth);
+            decodedMotionVector3d = zeros(rows, cols, 3);
+            previous_motion_vector_block = zeros(1,1,3);
+            % Loop through the decoded values in a 2x2 block size
+            for row = 1:2:rows
+                for col = 1:2:cols
+                    % Extract prefix (0 or 1) from the encoded data
+                    prefix = motionVectorRevEGC(idx);
+                    idx = idx + 1;
                     
-                    motion_block = zeros(2,2,3) 
-                    motion_block(1,1,:) = top_left_block
-
-                    [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
-                    decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
-                else
-                    error('ErrorID:1', 'Invalid prefix encountered during decoding!');
+                    if prefix == 0
+                        % Decode the entire 2x2x3 block
+                        motionVector1d = motionVectorRevEGC(idx:idx+11);
+                        idx = idx + 12;
+                        motionVector2d = invzigzag(motionVector1d, 2,2 * 3);
+                        motion_block = reshape_2d_to_3d(motionVector2d, 2, 2, 3);
+                        [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
+                        decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
+                    elseif prefix == 1
+                        % Decode the top-left 1x1x3 element
+                        motionVector1d = motionVectorRevEGC(idx:idx+2);
+                        idx = idx + 3;
+                        motionVector2d = invzigzag(motionVector1d, 1, 3);
+                        top_left_block = reshape_2d_to_3d(motionVector2d, 1, 1, 3);
+                        % Assign the top-left block to all elements in the 2x2 block
+                        
+                        motion_block = zeros(2,2,3) 
+                        motion_block(1,1,:) = top_left_block
+    
+                        [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
+                        decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
+                    else
+                        error('ErrorID:1', 'Invalid prefix encountered during decoding!');
+                    end
+                    
                 end
-                
             end
+
+        else
+            motionVectorRevEGC = exp_golomb_decode(encodedMotionVector1d);
+            motionVector2d = invzigzag(motionVectorRevEGC, mvheight, length(motionVectorRevEGC)/mvheight);
+            decodedMotionVector3d = reshape_2d_to_3d(motionVector2d, mvwidth, mvheight, 3);
         end
 
     elseif frame_type == 1

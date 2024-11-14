@@ -1,4 +1,4 @@
-function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrames, blockSize, searchRange)
+function [motionVectors, avgMAE] = motionEstimation(currentFrame, originalReferenceFrames,interpolatedReferenceFrames, blockSize, searchRange, FMEEnable, FastME)
     % Motion Estimation function that processes blocks in raster order.
     % Calls findBestMatch to find the best matching block in the reference frame.
     %
@@ -15,13 +15,21 @@ function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame
 
     % Get the dimensions of the frame
     [height, width] = size(currentFrame);%288 * 352
-    
+
+    % Check if fraction ME is enabled. If so, use the interpolated reference frames
+    if FMEEnable
+        referenceFrames = interpolatedReferenceFrames;
+    else
+        referenceFrames = originalReferenceFrames;
+    end
+
     % Initialize the motion vector array (for storing motion vectors for each block)
     numBlocksX = width / blockSize; 
     numBlocksY = height / blockSize; 
     motionVectors = zeros(numBlocksY, numBlocksX, 3);  % Stores motion vector for each block.
 
     totalMAE = 0;  % To keep track of the total MAE across all blocks
+    predictedMV = [0,0];
     
     % Process blocks in raster order (left to right, top to bottom)
     for row = 1:blockSize:height
@@ -38,9 +46,27 @@ function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame
             % Check all reference frames to find the best match
             for refIdx = 1:length(referenceFrames)
                 referenceFrame = referenceFrames{refIdx};
+                
+                % If fractional ME is enabled
+                if FMEEnable
+                    if FastME
+                    % If fast ME is enabled
+                        [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, row, col, blockSize, searchRange, predictedMV);
+                    else
+                    % If fast ME is NOT enabled
+                        [vector, mae, L1Norm] = findBestMatchFractionalPixel(currentBlock, referenceFrame, row, col, blockSize, searchRange);
+                    end
+                else
+                % If fractional ME is NOT enabled
+                    if FastME
+                    % If fast ME is enabled
+                        [vector, mae, L1Norm] = findBestMatchFast(currentBlock, referenceFrame, row, col, blockSize, searchRange, predictedMV);
+                    else
+                    % If fast ME is NOT enabled
+                        [vector, mae, L1Norm] = findBestMatchFullPixel(currentBlock, referenceFrame, row, col, blockSize, searchRange);
+                    end
 
-                % Find the best match within the current reference frame
-                [vector, mae, L1Norm] = findBestMatch(currentBlock, referenceFrame, row, col, blockSize, searchRange);
+                end
 
                 % Update if a better match is found
                 if mae < minMAE || (mae == minMAE && L1Norm < bestL1Norm)
@@ -53,7 +79,7 @@ function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame
 
             dy = bestVector(1);
             dx = bestVector(2);
-
+            predictedMV = bestVector;
             % Convert row and col to block indices
             blockY = (row - 1) / blockSize + 1;  
             blockX = (col - 1) / blockSize + 1;  
@@ -75,64 +101,3 @@ function [motionVectors, avgMAE] = motionEstimation(currentFrame, referenceFrame
 
 end
 
-function [bestVector, minMAE, bestL1Norm] = findBestMatch(currentBlock, referenceFrame, row, col, blockSize, searchRange)
-    % Find the best matching block using Mean Absolute Error (MAE).
-    %
-    % Parameters:
-    %   currentBlock - The block from the current frame to match
-    %   referenceFrame - The reference frame 
-    %   row, col - The starting position of the block in the current frame
-    %   blockSize - The size of the block
-    %   searchRange - The maximum pixel offset to search in the reference frame
-    %
-    % Returns:
-    %   bestVector - The best motion vector (dy, dx) for the current block
-    %   minMAE - The minimum MAE for the best matching block
-
-
-    % Initialization
-    minMAE = inf; 
-    bestVector = [0, 0]; 
-    bestL1Norm =inf;
-
-    % Reference Frame boundry
-    [heightBoundry,widthBoundry] = size(referenceFrame);
-
-    % Iterate over the search range to find the best matching block in the reference frame
-    for yOffset = -searchRange:searchRange
-        for xOffset = -searchRange:searchRange
-            % Determine the reference block's starting coordinates
-            refRow = row + yOffset;
-            refCol = col + xOffset;
-
-            % Check if the reference block is within bounds
-            if refRow > 0 && refRow + blockSize - 1 <= heightBoundry && refCol > 0 && refCol + blockSize - 1 <= widthBoundry
-                % Extract the reference block
-                refBlock = referenceFrame(refRow:refRow + blockSize - 1, refCol:refCol + blockSize - 1);
-
-                currentBlock = double(currentBlock);
-                refBlock = double(refBlock);
-
-                % Calculate the Mean Absolute Error 
-                MAE = mean(abs(currentBlock(:) - refBlock(:)));
-
-                % Compute the L1 norm of the current motion vector
-                currentL1Norm = abs(yOffset) + abs(xOffset);
-
-               % Use Mean of Absolute Error (MAE) as the ME assessment metric. 
-               % In case of a tie, choose the block with the smallest motion vector (L1 norm: |𝑥|+|𝑦|, not Euclidean). 
-               % If there is still a tie, choose  the  block  with  smallest y.  
-               % If there are more than one, choose the one with the smallest x.
-
-                if MAE < minMAE || (MAE == minMAE && (currentL1Norm < bestL1Norm)) || ...
-                   (MAE == minMAE && currentL1Norm == bestL1Norm && yOffset < bestVector(1)) || ...
-                   (MAE == minMAE && currentL1Norm == bestL1Norm && yOffset == bestVector(1) && xOffset < bestVector(2))
-
-                    minMAE = MAE;
-                    bestVector = [yOffset, xOffset];
-                    bestL1Norm = currentL1Norm;
-                end
-            end
-        end
-    end
-end

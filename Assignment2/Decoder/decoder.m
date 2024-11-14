@@ -15,7 +15,7 @@ function [total_bytes,bytes_list] = decoder(filename)
 
     % Read sequence parameters from header file
     headerFile = fopen('../Outputs/headerfile.mat', 'r');
-    params = fread(headerFile, 7, 'int32');  % [width, height, numFrames, blockSize, dct_blockSize, QP]
+    params = fread(headerFile, 10, 'int32');  % [width, height, numFrames, blockSize, dct_blockSize, QP]
     % Extract individual parameters
     width = params(1);
     height = params(2);
@@ -24,6 +24,9 @@ function [total_bytes,bytes_list] = decoder(filename)
     dct_blockSize = params(5);
     QP = params(6);
     nRefFrames = params(7);
+    VBSEnable = params(8);
+    FMEEnable = params(9);
+    FastME = params(10);
     % Close the header file
     fclose(headerFile);
     total_bytes = 0;
@@ -34,6 +37,11 @@ function [total_bytes,bytes_list] = decoder(filename)
     referenceFrames = cell(1, nRefFrames);
     for i = 1:nRefFrames
         referenceFrames{i} = 128 * ones(height, width, 'uint8');  % Initialize reference frames
+    end
+
+    interpolatedReferenceFrames = cell(1, nRefFrames);
+    for i = 1:nRefFrames
+        interpolatedReferenceFrames{i} = 128 * ones(2*height - 1, 2*width - 1, 'uint8');
     end
 
     pFrameCounter = 0;  % Counter for the number of P-frames since the last Intra frame
@@ -67,30 +75,40 @@ function [total_bytes,bytes_list] = decoder(filename)
 
         if isIFrame
             pFrameCounter = 0;  % Reset the P-frame counter
-            [nonimportant1,predictionModes,quantizedResiduals] = entropyDecode(isIFrame, [], encodedMDiff, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight);
+            [nonimportant1,predictionModes,quantizedResiduals] = entropyDecode(isIFrame, [], encodedMDiff, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight, VBSEnable);
             predictionModes = diffDecoding(predictionModes,'modes');
             compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
             intraCompFrame = intraCompensation(predictionModes, compresiduals, blockSize);
 
             % Add the approximated residuals to the predicted frame to reconstruct
             reconstructedFrame = double(intraCompFrame);
+            reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
+            interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
 
             for i = 1:nRefFrames
                 referenceFrames{i} = 128 * ones(height, width, 'uint8');  % Re-initialize reference frames
             end
+
+            for i = 1:nRefFrames
+                interpolatedReferenceFrames{i} = 128 * ones(height*2 - 1, width*2 -1, 'uint8');  
+            end
           
         else
-            [motionVectors,nonimportant1,quantizedResiduals] = entropyDecode(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth,   predwidth, predheight,  reswidth, resheight);
+            [motionVectors,nonimportant1,quantizedResiduals] = entropyDecode(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,VBSEnable);
             % Load the motion vectors and approximated residuals for the current frame
-            % motionVectors = diffDecoding(motionVectors,'mv');
 
+            if not (VBSEnable)
+                motionVectors = diffDecoding(motionVectors,'mv');
+            end
             % Perform motion compensation to get the predicted frame
-            predictedFrame = motionCompensation(referenceFrames, motionVectors, blockSize);
+            predictedFrame = motionCompensation(referenceFrames,interpolatedReferenceFrames, motionVectors, blockSize, width, height, FMEEnable);
+            
+
             compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
 
             % Add the approximated residuals to the predicted frame to reconstruct
             reconstructedFrame = double(predictedFrame) + double(compresiduals);
-
+            interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
              
            % Save the P-frame with overlays as an image
             saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx);
@@ -100,7 +118,7 @@ function [total_bytes,bytes_list] = decoder(filename)
         end
         
         % Clip the values to be in the range [0, 255] and convert to uint8
-        % reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
+         reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
         
 
         % Write the decoded frame to the output file
@@ -108,7 +126,8 @@ function [total_bytes,bytes_list] = decoder(filename)
 
         % Update the reference frames using a sliding window
         referenceFrames = [{reconstructedFrame}, referenceFrames(1:nRefFrames - 1)];
-        
+        interpolatedReferenceFrames = [{interpolatedReconstructedFrame}, interpolatedReferenceFrames(1:nRefFrames - 1)];
+
         fprintf('Decoded frame %d\n', frameIdx);
     end
 
