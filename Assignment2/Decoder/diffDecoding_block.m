@@ -44,3 +44,4 @@ function [reconstructed_values,last_value] = diffDecoding_block(diffValues, type
     end
 
     last_value = reconstructed_values(numBlocksY,numBlocksX,:);
+end    

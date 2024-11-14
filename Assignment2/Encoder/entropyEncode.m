@@ -31,7 +31,7 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
                     
                     % Extract the corresponding 2x2x3 block from motionVector3d
                     motion_block = motionVector3d(row:row+1, col:col+1, :);
-                    % [motion_block,previous_motion_vector_block] = diffEncoding_block(motion_block,'mv',previous_motion_vector_block);
+                    [motion_block,previous_motion_vector_block] = diffEncoding_block(motion_block,'mv',previous_motion_vector_block);
                     
                     if all(vbs_block(:) == 0)  % If this 2x2 block in vbs_matrix is all zeros
                         % Fetch the entire 2x2x3 block from motionVector3d
