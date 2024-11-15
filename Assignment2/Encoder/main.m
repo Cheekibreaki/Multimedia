@@ -13,15 +13,23 @@ numFrames = 5;                 % Number of frames to process
 searchRange = 8;                 % Search range r = 1,4, and 8
 QP = 3;
 j = 3;
+VBSEnable = false;
+FMEEnable = false;
+FastME = true;
+
+if(VBSEnable == true)
+    j = j-1;
+end
+
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
 I_Period = 10; 
 nRefFrames = 4;                 % Can take value from 1 to 4
-VBSEnable = true;
-FMEEnable = false;
-FastME = false;
+
 lambda = 1;
 % Pre-process
+
+
 
 dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
 
