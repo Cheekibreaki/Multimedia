@@ -13,9 +13,9 @@ numFrames = 5;                 % Number of frames to process
 searchRange = 8;                 % Search range r = 1,4, and 8
 QP = 3;
 j = 3;
-VBSEnable = false;
-FMEEnable = false;
-FastME = true;
+VBSEnable = true;
+FMEEnable = true;
+FastME = false;
 
 if(VBSEnable == true)
     j = j-1;
