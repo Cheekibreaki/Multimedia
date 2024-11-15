@@ -110,7 +110,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             % Motion estimation
             if VBSEnable
                 % Should use blockSize/2 here, same of motion compensation?
-                [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, validRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda);  
+                [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, validRefFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
                 MDiffMV = currMotionVectors;
             else
                 [currMotionVectors, avgMAE] = motionEstimation(currentFrame, validRefFrames,validInterpolatedRefFrames, blockSize, searchRange,FMEEnable, FastME);
