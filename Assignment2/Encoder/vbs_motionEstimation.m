@@ -1,4 +1,4 @@
-function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize,QP,lambda,FMEEnable, FastME)
+function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, referenceFrames, blockSize, searchRange, dct_blockSize,QP,lambda)
     % Motion Estimation function that processes blocks in raster order.
     % Calls findBestMatch to find the best matching block in the reference frame.
     %
@@ -27,11 +27,7 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
 
     for blockY = 1:2:numBlocksY
         for blockX = 1:2:numBlocksX
-            if FMEEnable
-                referenceFrames = interpolatedReferenceFrames;
-            else
-                referenceFrames = originalReferenceFrames;
-            end
+
             % Single large block: size is 2 * blockSize (i.e., twice the size in both dimensions)
             currentBlockSize = blockSize * 2;
             rowOffset = (blockY - 1) * blockSize + 1;
@@ -42,11 +38,10 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
                                         colOffset:colOffset + currentBlockSize - 1);
 
             % Compute motion estimation for large block and split blocks
-            
-            [motionVector_block_large, total_minMAE_large] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block, true, FMEEnable, FastME);
-            [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block,  false, FMEEnable, FastME);
-            
-            
+            [motionVector_block_large, total_minMAE_large] = compute_motionVector_block(currentBlock, currentBlockSize, referenceFrames, rowOffset, colOffset, searchRange, true);
+            [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, referenceFrames, rowOffset, colOffset, searchRange, false);
+
+           
             predictedFrame_block_large = compute_predictedFrame_block(referenceFrames, motionVector_block_large, rowOffset, colOffset, blockSize);
             predictedFrame_block_split = compute_predictedFrame_block(referenceFrames, motionVector_block_split, rowOffset, colOffset, blockSize);
             
@@ -200,7 +195,7 @@ end
 
 
 
-function [motionVector_block,total_minMAE] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, predictedMV, isLarge,FMEEnable, FastME)
+function [motionVector_block,total_minMAE] = compute_motionVector_block(currentBlock, currentBlockSize, referenceFrames, rowOffset, colOffset, searchRange, isLarge)
     
     % Initialize variables for the best match
     bestVector = [0, 0];
@@ -211,39 +206,15 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
     % Split current block into 4 pieces and find the best match for each
     motionVector_block = zeros(2, 2, 3);
     subBlockSize = currentBlockSize / 2;
-    predictedMV_new = reshape(predictedMV(:,:,1:2), 1, 2); % Explicitly reshape to 1x2
-    predictedMV = predictedMV_new
-    if FMEEnable
-        referenceFrames = interpolatedReferenceFrames;
-    else
-        referenceFrames = originalReferenceFrames;
-    end
+
     if isLarge
-        
+
         % Check all reference frames to find the best match
         for refIdx = 1:length(referenceFrames)
             referenceFrame = referenceFrames{refIdx};
-            if FMEEnable
-                if FastME
-                % If fast ME is enabled
-                    [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, rowOffset, colOffset, currentBlockSize, searchRange, predictedMV);
-                else
-                % If fast ME is NOT enabled
-                    [vector, mae, L1Norm] = findBestMatchFractionalPixel(currentBlock, referenceFrame, rowOffset, colOffset, currentBlockSize, searchRange);
-                end
-            else
-            % If fractional ME is NOT enabled
-                if FastME
-                % If fast ME is enabled
-                    [vector, mae, L1Norm] = findBestMatchFast(currentBlock, referenceFrame,rowOffset, colOffset, currentBlockSize,searchRange, predictedMV);
-                else
-                % If fast ME is NOT enabled
-                    [vector, mae, L1Norm] = findBestMatchFullPixel(currentBlock, referenceFrame, rowOffset, colOffset, currentBlockSize, searchRange);
-                end
-
-            end
-            
-           
+    
+            % Find the best match within the current reference frame
+            [vector, mae, L1Norm] = findBestMatch(currentBlock, referenceFrame, rowOffset, colOffset, currentBlockSize, searchRange);
     
             % Update if a better match is found
             if mae < minMAE || (mae == minMAE && L1Norm < bestL1Norm)
@@ -288,25 +259,7 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
                     referenceFrame = referenceFrames{refIdx};
                     
                     % Find the best match for the sub-block within the current reference frame
-                    if FMEEnable
-                        if FastME
-                        % If fast ME is enabled
-                            [vector, mae, L1Norm] = findBestMatchFastFraction(subBlock, referenceFrame, rowOffset, colOffset, subBlockSize, searchRange, predictedMV);
-                        else
-                        % If fast ME is NOT enabled
-                            [vector, mae, L1Norm] = findBestMatchFractionalPixel(subBlock, referenceFrame, rowOffset, colOffset, subBlockSize, searchRange);
-                        end
-                    else
-                    % If fractional ME is NOT enabled
-                        if FastME
-                        % If fast ME is enabled
-                            [vector, mae, L1Norm] = findBestMatchFast(subBlock, referenceFrame,rowOffset, colOffset, subBlockSize,searchRange, predictedMV);
-                        else
-                        % If fast ME is NOT enabled
-                            [vector, mae, L1Norm] = findBestMatchFullPixel(subBlock, referenceFrame, rowOffset, colOffset, subBlockSize, searchRange);
-                        end
-        
-                    end
+                    [vector, mae, L1Norm] = findBestMatch(subBlock, referenceFrame, rowOffset + subBlockY - 1, colOffset + subBlockX - 1, subBlockSize, searchRange);
                     
                     % Update if a better match is found
                     if mae < minMAE || (mae == minMAE && L1Norm < bestL1Norm)
