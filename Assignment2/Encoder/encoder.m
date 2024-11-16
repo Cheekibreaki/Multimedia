@@ -68,40 +68,22 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         else
             isIFrame = (mod(frameIdx - 1, I_Period) == 0);
         end
-
+        isIFrame = false;
 
         if isIFrame
            pFrameCounter = 0;
-           [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP);
-           MDiffModes = diffEncoding(currPredictionModes,'modes');
+           if VBSEnable
+               [predictedFrame, currPredictionModes, vbs_matrix] = vbs_intraPrediction(currentFrame, blockSize,dct_blockSize,QP);
+               MDiffModes = currPredictionModes;
+           else
+               [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP);
+               MDiffModes = diffEncoding(currPredictionModes,'modes');
+           end
+           
            
            Residuals = double(currentFrame) - double(predictedFrame);
            
         else
-            % for each large block (2xblockzie)
-            %     split it, 
-            %     calculate find best match and motion compensation
-            %     quantization(qp-1)
-            %     inv quantization
-            %     reconstruct 
-            % 
-            %     not split it
-            %     calculate find best match and motion compensation
-            %     quantization(qp)
-            %     inv quantization
-            %     reconstruct 
-            % 
-            %    compare using 
-            % 
-            %     D = SAD of reconstructs
-            % 
-            % 
-            %     R = use EntropyEncode on block level residue data
-            %     residual only!!!!!!!
-            %     J = D + Lambda R 
-
-
-
 
             % Inter-frame encoding with motion estimation using multiple reference frames
             % Only use valid reference frames based on the pFrameCounter
@@ -128,11 +110,12 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         
         
         if isIFrame
-           % if VBSEnable
-                %[nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
-          %  else
+           if VBSEnable
+                [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
+           else
+               
                [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
-           % end
+           end
 
             save(sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx), 'encodedMDiff');
             residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);

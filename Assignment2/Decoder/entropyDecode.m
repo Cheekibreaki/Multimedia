@@ -1,4 +1,4 @@
-function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight,VBSEnable)
+function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,reconstructed_vbs_matrix] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight,VBSEnable)
     
     %switch the order of width & height
     temp = mvwidth;
@@ -18,7 +18,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
     % pred_diff: array containing differential prediction information (modes for intra or motion vectors for inter)
     % dct_coeffs: block of quantized DCT coefficients
     % block_size: size of the block (e.g., 4 for 4x4 blocks)
-
+    reconstructed_vbs_matrix = [];  % VBS not used
     decodedMotionVector3d = [];
     decodedPredicitonModes2d = [];
     decodedResidues2d = [];
@@ -37,7 +37,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
                     prefix = motionVectorRevEGC(idx);
                     idx = idx + 1;
                     
-                    if prefix == 0
+                    if prefix == 1
                         % Decode the entire 2x2x3 block
                         motionVector1d = motionVectorRevEGC(idx:idx+11);
                         idx = idx + 12;
@@ -45,7 +45,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
                         motion_block = reshape_2d_to_3d(motionVector2d, 2, 2, 3);
                         [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
                         decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
-                    elseif prefix == 1
+                    elseif prefix == 0
                         % Decode the top-left 1x1x3 element
                         motionVector1d = motionVectorRevEGC(idx:idx+2);
                         idx = idx + 3;
@@ -72,10 +72,77 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d] = en
         end
 
     elseif frame_type == 1
-    
-        predictedModeRevEGC = exp_golomb_decode(encodedPredicitonModes1d); 
-        decodedPredicitonModes2d = invzigzag(predictedModeRevEGC, predwidth, predheight);
-        
+        if VBSEnable
+            % Decoding prediction modes using the structure from the encoding algorithm
+            predictedModeRevEGC = exp_golomb_decode(encodedPredicitonModes1d);
+            idx = 1;
+            [rows, cols] = deal(predheight, predwidth);
+            decodedPredicitonModes2d = zeros(rows, cols);
+            reconstructed_vbs_matrix = zeros(rows, cols);
+            previous_prediction_mode_block = 0;
+
+            % Loop through the decoded values in a 2x2 block size
+            for row = 1:2:rows
+                for col = 1:2:cols
+                    % Extract prefix (0 or 1) from the encoded data
+                    if idx > length(predictedModeRevEGC)
+                        break;  % Reached the end of the encoded data
+                    end
+                    prefix = predictedModeRevEGC(idx);
+                    idx = idx + 1;
+
+                    if prefix == 1  % Split block
+                        % Read the next 4 elements (2x2 block)
+                        num_elements = 4;  % Since zigzag of 2x2 block is 4 elements
+                        if idx + num_elements - 1 > length(predictedModeRevEGC)
+                            error('Not enough data to decode split block');
+                        end
+                        predictionMode1d = predictedModeRevEGC(idx:idx + num_elements -1);
+                        idx = idx + num_elements;
+
+                        % Inverse zigzag to get 2x2 block
+                        predictionMode_block = invzigzag(predictionMode1d, 2, 2);
+
+                        % Apply differential decoding
+                        [predictionMode_block, previous_prediction_mode_block] = ...
+                            diffDecoding_block(predictionMode_block, 'modes', previous_prediction_mode_block);
+
+                        % Place the decoded modes into the correct positions
+                        decodedPredicitonModes2d(row:row+1, col:col+1) = predictionMode_block;
+
+                        % Set vbs_matrix to 1(split block)
+                        reconstructed_vbs_matrix(row:row+1, col:col+1) = 1;
+
+                    elseif prefix == 0  % Large block
+                        % Read the next element (top-left mode)
+                        if idx > length(predictedModeRevEGC)
+                            error('Not enough data to decode large block');
+                        end
+                        predictionMode1d = predictedModeRevEGC(idx);
+                        idx = idx + 1;
+
+                        % Inverse zigzag to get the mode (only one element)
+                        predictionMode_block = invzigzag(predictionMode1d, 1, 1);
+
+                        % Apply differential decoding
+                        [predictionMode_block, previous_prediction_mode_block] = ...
+                            diffDecoding_block(predictionMode_block, 'modes', previous_prediction_mode_block);
+
+                        % Assign the mode to all positions in the 2x2 block
+                        decodedPredicitonModes2d(row:row+1, col:col+1) = predictionMode_block;
+
+                        % Set vbs_matrix to 0 (large block)
+                        reconstructed_vbs_matrix(row:row+1, col:col+1) = 0;
+
+                    else
+                        error('Invalid prefix encountered during decoding!');
+                    end
+                end
+            end
+        else
+            predictedModeRevEGC = exp_golomb_decode(encodedPredicitonModes1d); 
+            decodedPredicitonModes2d = invzigzag(predictedModeRevEGC, predwidth, predheight);
+        end
     end
         
         residuesRevEGC = exp_golomb_decode(encodedResidues1d);

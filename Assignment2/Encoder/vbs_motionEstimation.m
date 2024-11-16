@@ -121,12 +121,12 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             if J_large < J_split
                 motionVector_block = motionVector_block_large;
                 total_minMAE = total_minMAE_large;
-                vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 1;
+                vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 0;
                 previous_motion_vector_block = previous_motion_vector_block_large;
             else
                 motionVector_block = motionVector_block_split;
                 total_minMAE = total_minMAE_split;
-                vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 0;
+                vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 1;
                 previous_motion_vector_block = previous_motion_vector_block_split;
             end
 
