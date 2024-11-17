@@ -58,6 +58,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame]
             D_split = SAD_split;
 
             % Calculate RD cost
+
             J_large = D_large + lambda * R_large;
             J_split = D_split + lambda * R_split;
 

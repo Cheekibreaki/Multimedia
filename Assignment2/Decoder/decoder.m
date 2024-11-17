@@ -71,7 +71,7 @@ function [total_bytes,bytes_list] = decoder(filename)
        total_bytes = total_bytes+quantizedResInfo.bytes;
        total_bytes = total_bytes+MDiffInfo.bytes;
        bytes_list(frameIdx) =  MDiffInfo.bytes + quantizedResInfo.bytes;
-       % isIFrame = false;
+        isIFrame = false;
 
         if isIFrame
             pFrameCounter = 0;  % Reset the P-frame counter
@@ -202,17 +202,32 @@ function vbsVisualization(isIFrame,frame, vbs_matrix, blockSize, frameIdx, motio
     % Loop through each 2x2 block in the vbs_matrix
     for row = 1:2:rows
         for col = 1:2:cols
-            % if not(isIFrame)
                 % Check the 2x2 block in the vbs_matrix
                 if all(vbs_matrix(row:row+1, col:col+1) == 0)
                     % Draw one large block if all 4 values are 0
                     x = ((col + 1) / 2 - 1 ) * 2 * blockSize;
                     y = ((row + 1) / 2  -1) * 2 * blockSize;
                     rectangle('Position', [x, y, 2 * blockSize, 2 * blockSize], 'EdgeColor', 'k', 'LineWidth', 1);
+                   
+                    if isIFrame
+                         mode = predictionModes(row, col);
+                         x = ((col + 1) / 2 - 1 ) * 2 * blockSize;
+                         y = ((row + 1) / 2  -1) * 2 * blockSize;
+
+                        if mode == 0
+                            % Horizontal arrow
+                            quiver(x , y + blockSize, 2 * blockSize, 0, 'Color', 'r', 'MaxHeadSize', 1);
+                        elseif mode == 1
+                            % Vertical arrow
+                            quiver(x + blockSize, y, 0, 2 * blockSize, 'Color', 'b', 'MaxHeadSize', 1);
+                        end
+                  
+                    else
                     % Draw one motion vector for the large block
                     mvRow = row;
                     mvCol = col;
                     drawMotionVector(motionVectors, mvRow, mvCol, x + blockSize, y + blockSize);
+                    end
     
                 else
                     x = (col - 1) * blockSize;
@@ -221,7 +236,61 @@ function vbsVisualization(isIFrame,frame, vbs_matrix, blockSize, frameIdx, motio
                     rectangle('Position', [x + blockSize, y, blockSize, blockSize],  'LineWidth', 1);
                     rectangle('Position', [x, y + blockSize, blockSize, blockSize],  'LineWidth', 1);
                     rectangle('Position', [x + blockSize, y + blockSize, blockSize, blockSize],  'LineWidth', 1);
-    
+                    
+                    if isIFrame
+                        modeRow1 = row;
+                        modeCol1 = col;
+                        mode = predictionModes(modeRow1, modeCol1);
+                        y = (modeRow1-1)*blockSize;
+                        x = (modeCol1-1)*blockSize;
+                        if mode == 0
+                            % Horizontal arrow
+                            quiver(x , y + blockSize/2, blockSize, 0, 'Color', 'r', 'MaxHeadSize', 1);
+                        elseif mode == 1
+                            % Vertical arrow
+                            quiver(x + blockSize/2, y, 0, blockSize, 'Color', 'b', 'MaxHeadSize', 1);
+                        end
+                  
+                        modeRow2 = modeRow1;
+                        modeCol2 = modeCol1 +1;
+                        mode = predictionModes(modeRow2, modeCol2);
+                        y = (modeRow2-1)*blockSize;
+                        x = (modeCol2-1)*blockSize;
+                        if mode == 0
+                            % Horizontal arrow
+                            quiver(x , y + blockSize/2, blockSize, 0, 'Color', 'r', 'MaxHeadSize', 1);
+                        elseif mode == 1
+                            % Vertical arrow
+                            quiver(x + blockSize/2, y, 0, blockSize, 'Color', 'b', 'MaxHeadSize', 1);
+                        end
+
+                        modeRow3 = modeRow1+1;
+                        modeCol3 = modeCol1;
+                        mode = predictionModes(modeRow3, modeCol3);
+                        y = (modeRow3-1)*blockSize;
+                        x = (modeCol3-1)*blockSize;
+                        if mode == 0
+                            % Horizontal arrow
+                            quiver(x , y + blockSize/2, blockSize, 0, 'Color', 'r', 'MaxHeadSize', 1);
+                        elseif mode == 1
+                            % Vertical arrow
+                            quiver(x + blockSize/2, y, 0, blockSize, 'Color', 'b', 'MaxHeadSize', 1);
+                        end
+
+                        modeRow4 = modeRow1+1;
+                        modeCol4 = modeCol1+1;
+                        mode = predictionModes(modeRow4, modeCol4);
+                        y = (modeRow4-1)*blockSize;
+                        x = (modeCol4-1)*blockSize;
+                        if mode == 0
+                            % Horizontal arrow
+                            quiver(x , y + blockSize/2, blockSize, 0, 'Color', 'r', 'MaxHeadSize', 1);
+                        elseif mode == 1
+                            % Vertical arrow
+                            quiver(x + blockSize/2, y, 0, blockSize, 'Color', 'b', 'MaxHeadSize', 1);
+                        end
+
+                    else
                      % Draw four motion vectors for the small blocks
                     mvRow1 = row;
                     mvCol1 = col;
@@ -238,12 +307,10 @@ function vbsVisualization(isIFrame,frame, vbs_matrix, blockSize, frameIdx, motio
                     mvRow4 = mvRow1 + 1;
                     mvCol4 = mvCol1 + 1;
                     drawMotionVector(motionVectors, mvRow4, mvCol4, x + 3 * blockSize/2, y + 3 * blockSize/2);
+                    end
 
                 end
-            % else
-                %draw mode here
-
-            % end
+           
         end
     end
 
@@ -254,7 +321,7 @@ function vbsVisualization(isIFrame,frame, vbs_matrix, blockSize, frameIdx, motio
     set(gca, 'FontSize', 12);  % Adjust font size if needed
 
     % Save the visualization as a high-resolution image
-    print(gcf, sprintf('../Outputs/Frame_%d_VariableBlockSize_WithMotionVectors.png', frameIdx), '-dpng', '-r300');
+    print(gcf, sprintf('../Outputs/Frame_%d_VariableBlockSize_WithPredictionInfo.png', frameIdx), '-dpng', '-r300');
     close;
 end
 
@@ -315,7 +382,7 @@ end
     set(gca, 'FontSize', 12);  % Adjust font size if needed
 
     % Save the visualization as a high-resolution image
-    print(gcf, sprintf('../Outputs/Frame_%d_VariableBlockSize_WithMotionVectors.png', frameIdx), '-dpng', '-r300');
+    print(gcf, sprintf('../Outputs/Frame_%d_PredictionInfo.png', frameIdx), '-dpng', '-r300');
     close;
 end
 
