@@ -5,7 +5,6 @@ function [reconstructedFrame] = vbs_intraCompensation(predictionModes, residuals
     approximatedReconstructedFrame = zeros(size(residuals), 'double');
     numBlocksY = ceil(height / blockSize);
     numBlocksX = ceil(width / blockSize);
-    
     for blockY = 1:2:numBlocksY
         for blockX = 1:2:numBlocksX
             % Determine whether to process as large block or split blocks

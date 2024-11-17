@@ -84,12 +84,12 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
                     predictionMode_block = predicitonModes2d(row:row+1, col:col+1, :);
                     [predictionMode_block,previous_prediction_mode_block] = diffEncoding_block(predictionMode_block,'modes',previous_prediction_mode_block);
                     
-                    if all(vbs_block(:) == 1)  % If this 2x2 block in vbs_matrix is all zeros
+                    if all(vbs_block(:) == 1)  % If this 2x2 block in vbs_matrix is all ones
                         % Fetch the entire 2x2x3 block from motionVector3d
                         predictionMode_block_1d = zigzag(predictionMode_block);
                         predictionMode_block_1d = [1, predictionMode_block_1d];  % Prefix with 0 to indicate all zeros
                         resultpredictionMode_block_1d = [resultpredictionMode_block_1d, predictionMode_block_1d];  % Append to the result
-                    elseif all(vbs_block(:) == 0)  % If this 2x2 block in vbs_matrix is all ones
+                    elseif all(vbs_block(:) == 0)  % If this 2x2 block in vbs_matrix is all zeros
                         % Fetch the 1x1x3 top-left element of the 2x2x3 motionVector3d block
                         top_left_block = predictionMode_block(1, 1, :);
                         predictionMode_block_1d = zigzag(top_left_block);

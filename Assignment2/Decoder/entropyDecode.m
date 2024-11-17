@@ -73,6 +73,11 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
 
     elseif frame_type == 1
         if VBSEnable
+            temp = predwidth;
+            predwidth = predheight;
+            predheight = temp;
+           
+
             % Decoding prediction modes using the structure from the encoding algorithm
             predictedModeRevEGC = exp_golomb_decode(encodedPredicitonModes1d);
             idx = 1;
@@ -142,12 +147,15 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
         else
             predictedModeRevEGC = exp_golomb_decode(encodedPredicitonModes1d); 
             decodedPredicitonModes2d = invzigzag(predictedModeRevEGC, predwidth, predheight);
+            decodedPredicitonModes2d = diffDecoding(decodedPredicitonModes2d,'modes');
         end
     end
         
         residuesRevEGC = exp_golomb_decode(encodedResidues1d);
         decodedResidues1d = rle_decode(residuesRevEGC, reswidth * resheight); 
         decodedResidues2d = invzigzag(decodedResidues1d, reswidth, resheight);
+
+        
     
 end
 

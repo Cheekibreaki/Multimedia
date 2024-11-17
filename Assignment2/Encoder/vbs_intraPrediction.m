@@ -58,27 +58,33 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix] = vbs_intraPr
             D_split = SAD_split;
 
             % Calculate RD cost
-            J_large = D_large  + lambda * R_large;
+            J_large = D_large * 100 + lambda * R_large;
             J_split = D_split  + lambda * R_split;
 
             % Choose the block with the lower RD cost
             if J_large < J_split
                 approximatedReconstructedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = ...
                     approximatedReconstructed_block_large;
+                
                 approximatedPredictedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = ...
                     approximatedPredictedFrame_large(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1);
                 predictionModes(blockY:blockY+1, blockX:blockX+1) = predictionModes_large(blockY:blockY+1, blockX:blockX+1);
-                vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 1;
+                vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 0;
             else
                 approximatedReconstructedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = ...
                     approximatedReconstructed_block_split;
                 approximatedPredictedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = ...
                     approximatedPredictedFrame_split(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1);
                 predictionModes(blockY:blockY+1, blockX:blockX+1) = predictionModes_split(blockY:blockY+1, blockX:blockX+1);
-                vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 0;
+                vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 1;
             end
+
+           
         end
+         
     end
+    % reconstructedImage = uint8(approximatedPredictedFrame_large);
+    %         imshow(reconstructedImage);
 end
 
 function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame] = ...
@@ -93,6 +99,30 @@ function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPr
     % Initialize combined blocks
     combinedQuantizedResidualBlock = zeros(2 * blockSize, 2 * blockSize);
     combinedApproximatedReconstructedBlock = zeros(2 * blockSize, 2 * blockSize);
+    
+
+    if baseRowOffset == 1 && baseColOffset == 1
+        mode_tl = 'mid-gray';
+        mode_tr = 'horizontal';
+        mode_bl = 'vertical';
+        mode_br = 'compare';
+    elseif baseRowOffset == 1
+        mode_tl = 'horizontal';
+        mode_tr = 'horizontal';
+        mode_bl = 'compare';
+        mode_br = 'compare';
+    elseif baseColOffset == 1
+        mode_tl = 'vertical';
+        mode_tr = 'compare';
+        mode_bl = 'vertical';
+        mode_br = 'compare';
+    else
+        mode_tl = 'compare';
+        mode_tr = 'compare';
+        mode_bl = 'compare';
+        mode_br = 'compare';
+    end
+
 
     % Offsets within the combined block
     offsets = [0, 0; 0, blockSize; blockSize, 0; blockSize, blockSize];
@@ -100,6 +130,17 @@ function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPr
 
     % Process the four sub-blocks
     for idx = 1:4
+
+        if idx == 1
+            mode = mode_tl;
+        elseif idx == 2
+            mode = mode_tr;
+        elseif idx == 3
+            mode = mode_bl;
+        elseif idx == 4
+            mode = mode_br;
+        end
+
         subBlockY = blockY + floor((idx - 1) / 2);
         subBlockX = blockX + mod(idx - 1, 2);
         rowOffsetSub = baseRowOffset + offsets(idx, 1);
@@ -108,7 +149,7 @@ function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPr
         if subBlockY <= numBlocksY && subBlockX <= numBlocksX
             [qResidual, aReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame] = ...
                 processBlock(currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
-                subBlockY, subBlockX, rowOffsetSub, colOffsetSub, blockSize, dct_blockSize, baseQP, modes{idx}, isLarge);
+                subBlockY, subBlockX, rowOffsetSub, colOffsetSub, blockSize, dct_blockSize, baseQP, mode, isLarge);
 
             % Place the sub-blocks into the combined block
             actualSubBlockHeight = size(aReconstructedBlock, 1);
