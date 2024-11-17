@@ -30,6 +30,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
             [rows, cols] = deal(mvheight, mvwidth);
             decodedMotionVector3d = zeros(rows, cols, 3);
             previous_motion_vector_block = zeros(1,1,3);
+            reconstructed_vbs_matrix = zeros(rows, cols);
             % Loop through the decoded values in a 2x2 block size
             for row = 1:2:rows
                 for col = 1:2:cols
@@ -45,6 +46,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                         motion_block = reshape_2d_to_3d(motionVector2d, 2, 2, 3);
                         [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
                         decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
+                        reconstructed_vbs_matrix(row:row+1, col:col+1) = 1;
                     elseif prefix == 0
                         % Decode the top-left 1x1x3 element
                         motionVector1d = motionVectorRevEGC(idx:idx+2);
@@ -53,11 +55,12 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                         top_left_block = reshape_2d_to_3d(motionVector2d, 1, 1, 3);
                         % Assign the top-left block to all elements in the 2x2 block
                         
-                        motion_block = zeros(2,2,3) 
-                        motion_block(1,1,:) = top_left_block
+                        motion_block = zeros(2,2,3); 
+                        motion_block(1,1,:) = top_left_block;
     
                         [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
                         decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
+                        reconstructed_vbs_matrix(row:row+1, col:col+1) = 0;
                     else
                         error('ErrorID:1', 'Invalid prefix encountered during decoding!');
                     end

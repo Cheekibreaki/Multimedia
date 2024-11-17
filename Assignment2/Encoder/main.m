@@ -11,11 +11,11 @@ width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 5;                 % Number of frames to process
 searchRange = 8;                 % Search range r = 1,4, and 8
-QP = 5;
-j = 3;
+QP = 4;
+j = 4;
 VBSEnable = true;
 FMEEnable = false;
-FastME = true;
+FastME = false;
 
 if(VBSEnable == true)
     j = j-1;
@@ -26,7 +26,7 @@ dct_blockSize = 2^j;
 I_Period = 10; 
 nRefFrames = 4;                 % Can take value from 1 to 4
 
-lambda = 1;
+lambda = 0.85;
 % Pre-process
 
 
@@ -39,8 +39,8 @@ dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
 encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME );
 [total_byte,bytes_list] = decoder(decodedFile);
 %decoder
-compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
-calculatePSNR(decodedFile, paddedOutputFile, width, height, numFrames)
+%compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
+%calculatePSNR(decodedFile, paddedOutputFile, width, height, numFrames)
 
 function avgPsnr = calculatePSNR(decodedFile, originalFile, width, height, numFrames)
     % Parameters:

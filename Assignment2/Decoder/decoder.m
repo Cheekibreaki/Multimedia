@@ -96,9 +96,15 @@ function [total_bytes,bytes_list] = decoder(filename)
             for i = 1:nRefFrames
                 interpolatedReferenceFrames{i} = 128 * ones(height*2 - 1, width*2 -1, 'uint8');  
             end
+
+            if VBSEnable
+                vbsVisualization(isIFrame,reconstructedFrame, vbs_matrix, blockSize, frameIdx, [], predictionModes);
+            else
+                predictionInfoVisualization(reconstructedFrame, predictionModes, frameIdx, isIFrame,blockSize);
+            end
           
         else
-            [motionVectors,nonimportant1,quantizedResiduals] = entropyDecode(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,VBSEnable);
+            [motionVectors,nonimportant1,quantizedResiduals,vbs_matrix] = entropyDecode(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,VBSEnable);
             % Load the motion vectors and approximated residuals for the current frame
 
             if not (VBSEnable)
@@ -116,6 +122,12 @@ function [total_bytes,bytes_list] = decoder(filename)
              
            % Save the P-frame with overlays as an image
             saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx);
+            
+            if VBSEnable
+                vbsVisualization(isIFrame,reconstructedFrame, vbs_matrix, blockSize, frameIdx, motionVectors,[]);
+            else
+                predictionInfoVisualization(reconstructedFrame, motionVectors, frameIdx, isIFrame, blockSize);
+            end
           
             % Increment the P-frame counter
             pFrameCounter = min(pFrameCounter + 1, nRefFrames); 
@@ -172,4 +184,149 @@ function saveVisualizeReferenceFrames(frame, motionVectors, frameIdx)
     hold off;
     saveas(gcf, sprintf('../Outputs/Frame_%d_Visualize_nReferenceFrames.png', frameIdx));  % Save the figure as an image
     %close; 
+end
+
+
+
+function vbsVisualization(isIFrame,frame, vbs_matrix, blockSize, frameIdx, motionVectors,predictionModes)
+    % Create a new figure with specified size for high resolution
+    figure('Units', 'normalized', 'OuterPosition', [0 0 1 1]);  % Full-screen figure
+
+    imshow(uint8(frame), []);
+    hold on;
+
+ % The size of the motion vector grid
+    [rows, cols] = size(vbs_matrix);
+    % Loop through each 2x2 block in the vbs_matrix
+    for row = 1:2:rows
+        for col = 1:2:cols
+            % if not(isIFrame)
+                % Check the 2x2 block in the vbs_matrix
+                if all(vbs_matrix(row:row+1, col:col+1) == 0)
+                    % Draw one large block if all 4 values are 0
+                    x = ((col + 1) / 2 - 1 ) * 2 * blockSize;
+                    y = ((row + 1) / 2  -1) * 2 * blockSize;
+                    rectangle('Position', [x, y, 2 * blockSize, 2 * blockSize], 'EdgeColor', 'k', 'LineWidth', 1);
+                    % Draw one motion vector for the large block
+                    mvRow = row;
+                    mvCol = col;
+                    drawMotionVector(motionVectors, mvRow, mvCol, x + blockSize, y + blockSize);
+    
+                else
+                    x = (col - 1) * blockSize;
+                    y = (row - 1) * blockSize;
+                    rectangle('Position', [x, y, blockSize, blockSize], 'EdgeColor', 'k', 'LineWidth', 1);
+                    rectangle('Position', [x + blockSize, y, blockSize, blockSize],  'LineWidth', 1);
+                    rectangle('Position', [x, y + blockSize, blockSize, blockSize],  'LineWidth', 1);
+                    rectangle('Position', [x + blockSize, y + blockSize, blockSize, blockSize],  'LineWidth', 1);
+    
+                     % Draw four motion vectors for the small blocks
+                    mvRow1 = row;
+                    mvCol1 = col;
+                    drawMotionVector(motionVectors, mvRow1, mvCol1, x + blockSize/2, y + blockSize/2);
+    
+                    mvRow2 = mvRow1;
+                    mvCol2 = mvCol1 + 1;
+                    drawMotionVector(motionVectors, mvRow2, mvCol2, x + 3 * blockSize/2, y + blockSize/2);
+    
+                    mvRow3 = mvRow1 + 1;
+                    mvCol3 = mvCol1;
+                    drawMotionVector(motionVectors, mvRow3, mvCol3, x + blockSize/2, y + 3 * blockSize/2);
+    
+                    mvRow4 = mvRow1 + 1;
+                    mvCol4 = mvCol1 + 1;
+                    drawMotionVector(motionVectors, mvRow4, mvCol4, x + 3 * blockSize/2, y + 3 * blockSize/2);
+
+                end
+            % else
+                %draw mode here
+
+            % end
+        end
+    end
+
+    hold off;
+    % Set figure properties for high resolution
+    set(gcf, 'PaperPosition', [0 0 10 10]);  % Increase the paper size
+    set(gcf, 'PaperSize', [10 10]);  % Set the paper size
+    set(gca, 'FontSize', 12);  % Adjust font size if needed
+
+    % Save the visualization as a high-resolution image
+    print(gcf, sprintf('../Outputs/Frame_%d_VariableBlockSize_WithMotionVectors.png', frameIdx), '-dpng', '-r300');
+    close;
+end
+
+    function predictionInfoVisualization(frame, info, frameIdx, isIFrame, blockSize)
+    % Helper function to visualize prediction info
+    % For I-frames, info = predictionModes (0 for horizontal, 1 for vertical)
+    % For P-frames, info = motionVectors (dy, dx for each block)
+     % Adjust these settings to ensure uniform arrowhead sizes and thinner lines
+    arrowLineWidth = 0.5;  % Thinner lines
+    
+    % Create a new figure with specified size for high resolution
+    figure('Units', 'normalized', 'OuterPosition', [0 0 1 1]);  % Full-screen figure
+
+    imshow(uint8(frame), []);
+    hold on;
+    
+    [numBlocksY, numBlocksX] = size(info(:,:,1));
+    halfBlockSize = blockSize / 2;
+    if isIFrame
+        % Visualize prediction modes for I-frames
+        for by = 1:numBlocksY
+            for bx = 1:numBlocksX
+                mode = info(by, bx);
+                x = (bx - 1) * blockSize + halfBlockSize;
+                y = (by - 1) * blockSize + halfBlockSize;
+                
+                if mode == 0
+                    % Horizontal arrow
+                    quiver(x - halfBlockSize, y, blockSize, 0, 'Color', 'r', 'MaxHeadSize', 1);
+                elseif mode == 1
+                    % Vertical arrow
+                    quiver(x, y - halfBlockSize, 0, blockSize, 'Color', 'b', 'MaxHeadSize', 1);
+                end
+            end
+        end
+    else
+        % Visualize motion vectors for P-frames
+        for by = 1:numBlocksY
+            for bx = 1:numBlocksX
+               
+                    dy = info(by, bx, 1);
+                    dx = info(by, bx, 2);
+                
+                x = (bx - 1) * blockSize + halfBlockSize - dx;
+                y = (by - 1) * blockSize + halfBlockSize - dy;
+                
+                quiver(x, y, dx, dy, 'Color', 'b', ...
+                      'MaxHeadSize', 1,  'LineWidth', arrowLineWidth);
+
+            end
+        end
+    end
+
+    hold off;
+   % Set figure properties for high resolution
+    set(gcf, 'PaperPosition', [0 0 10 10]);  % Increase the paper size
+    set(gcf, 'PaperSize', [10 10]);  % Set the paper size
+    set(gca, 'FontSize', 12);  % Adjust font size if needed
+
+    % Save the visualization as a high-resolution image
+    print(gcf, sprintf('../Outputs/Frame_%d_VariableBlockSize_WithMotionVectors.png', frameIdx), '-dpng', '-r300');
+    close;
+end
+
+function drawMotionVector(motionVectors, mvRow, mvCol, endX, endY)
+    % Draw a motion vector as an arrow
+    dx = motionVectors(mvRow, mvCol, 1);
+    dy = motionVectors(mvRow, mvCol, 2);
+
+    startX = endX - dx;
+    startY = endY - dy;
+
+    % Scale the motion vector for better visualization
+    scale = 1;  % Adjust this scale factor as needed
+    quiver(startX, startY, scale * dx, scale * dy, 'Color', 'b', 'MaxHeadSize', 1, 'LineWidth', 0.5);
+    
 end
