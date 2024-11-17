@@ -1,18 +1,7 @@
-function analyze_vbs_statistics()
-    % Fixed parameters
-    filename = '../foreman_cif-1.yuv';
-    outputFile = '../Outputs/Y_only_foreman.yuv';
-    paddedOutputFile = '../Outputs/padded_Y_foreman.yuv';
-    referenceFile = '../Outputs/referenceFrames.yuv';
-    decodedFile = '../Outputs/decoded_Y_foreman.yuv';
-    width = 352;
-    height = 288;
-    numFrames = 10;
-    blockSize = 16;
-    searchRange = 4;
-    I_Period = 8;
-    QPs = [1, 4, 7, 10];  % Test QPs
-    lambda = 1;
+function analyze_vbs_statistics(filename, outputFile, paddedOutputFile, referenceFile, decodedFile, ...
+                                 width, height, numFrames, blockSize, searchRange, ...
+                                 I_Period, lambda, VBSEnable, FMEEnable, FastME, ...
+                                 nRefFrames, QPs)
 
     % Initialize storage for VBS statistics
     split_percentages = zeros(1, length(QPs));

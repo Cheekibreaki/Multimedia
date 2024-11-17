@@ -15,7 +15,7 @@ QP = 3;
 j = 4;
 VBSEnable = true;
 FMEEnable = false;
-FastME = true;
+FastME = false;
 
 if(VBSEnable == true)
     j = j-1;
@@ -56,7 +56,16 @@ calculatePSNR(decodedFile, paddedOutputFile, width, height, numFrames)
 %All the graph for report:
 %generate_rd_analysis();
 
-%analyze_vbs_statistics();
+% 
+% analyze_vbs_statistics(filename, outputFile, paddedOutputFile, referenceFile, decodedFile, ...
+%                        width, height, numFrames, blockSize, searchRange, ...
+%                        I_Period, lambda, VBSEnable, FMEEnable, FastME, ...
+%                        nRefFrames, QPs);
+
+lambdatest(filename, outputFile, paddedOutputFile, referenceFile, decodedFile, ...
+                       width, height, numFrames, blockSize, searchRange, ...
+                       I_Period, lambda, VBSEnable, FMEEnable, FastME, ...
+                       nRefFrames, QPs);
 
 %analyze_reference_frames();
 
