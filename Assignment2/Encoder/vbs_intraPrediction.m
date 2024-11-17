@@ -1,4 +1,4 @@
-function [approximatedPredictedFrame, predictionModes, vbs_matrix] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP)
+function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP)
     [height, width] = size(currentFrame);
     approximatedPredictedFrame_split = zeros(size(currentFrame), 'double');
     approximatedPredictedFrame_large = zeros(size(currentFrame), 'double');
@@ -8,7 +8,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix] = vbs_intraPr
     approximatedReconstructedFrame = zeros(size(currentFrame), 'double');
     numBlocksY = ceil(height / blockSize);
     numBlocksX = ceil(width / blockSize);
-
+    residualFrame = zeros(size(currentFrame), 'double');
     predictionModes_split = int32(zeros(numBlocksY, numBlocksX));
     predictionModes_large = int32(zeros(numBlocksY, numBlocksX));
     predictionModes = int32(zeros(numBlocksY, numBlocksX));
@@ -33,8 +33,8 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix] = vbs_intraPr
             % VBS large estimation
             [quantized_residualBlock_large, approximatedReconstructed_block_large, approximatedPredictedFrame_large, predictionModes_large, approximatedReconstructedFrame_large] = ...
                 VBS_large_estimation(currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
-                blockY, blockX, blockSize * 2, dct_blockSize * 2, baseQP);
-
+                blockY, blockX, blockSize, dct_blockSize, baseQP);
+            
             % Compute SAD for reconstructed_split
             SAD_split = sum(sum(abs(double(currentBlock) - double(approximatedReconstructed_block_split))));
 
@@ -58,8 +58,8 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix] = vbs_intraPr
             D_split = SAD_split;
 
             % Calculate RD cost
-            J_large = D_large * 100 + lambda * R_large;
-            J_split = D_split  + lambda * R_split;
+            J_large = D_large + lambda * R_large;
+            J_split = D_split + lambda * R_split;
 
             % Choose the block with the lower RD cost
             if J_large < J_split
@@ -70,6 +70,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix] = vbs_intraPr
                     approximatedPredictedFrame_large(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1);
                 predictionModes(blockY:blockY+1, blockX:blockX+1) = predictionModes_large(blockY:blockY+1, blockX:blockX+1);
                 vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 0;
+                residualFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = quantized_residualBlock_large;
             else
                 approximatedReconstructedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = ...
                     approximatedReconstructed_block_split;
@@ -77,6 +78,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix] = vbs_intraPr
                     approximatedPredictedFrame_split(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1);
                 predictionModes(blockY:blockY+1, blockX:blockX+1) = predictionModes_split(blockY:blockY+1, blockX:blockX+1);
                 vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 1;
+                residualFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = quantized_residualBlock_split;
             end
 
            
@@ -87,7 +89,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix] = vbs_intraPr
     %         imshow(reconstructedImage);
 end
 
-function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame] = ...
+function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame,approximatedresidualFrame] = ...
     VBS_split_estimation(currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
     blockY, blockX, blockSize, dct_blockSize, baseQP, numBlocksY, numBlocksX)
 
@@ -147,7 +149,7 @@ function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPr
         colOffsetSub = baseColOffset + offsets(idx, 2);
 
         if subBlockY <= numBlocksY && subBlockX <= numBlocksX
-            [qResidual, aReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame] = ...
+            [qResidual, aReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame,approximatedresidualFrame] = ...
                 processBlock(currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
                 subBlockY, subBlockX, rowOffsetSub, colOffsetSub, blockSize, dct_blockSize, baseQP, mode, isLarge);
 
@@ -166,38 +168,42 @@ function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPr
     approximatedReconstructedBlock = combinedApproximatedReconstructedBlock;
 end
 
-function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame] = ...
+function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame,approximatedresidualFrame] = ...
     VBS_large_estimation(currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
     blockY, blockX, blockSize, dct_blockSize, baseQP)
 
     isLarge = true;
 
-    % Adjust blockY and blockX for large block positioning
-    adjustedBlockY = (blockY - 1) / 2 + 1;
-    adjustedBlockX = (blockX - 1) / 2 + 1;
+    % % Adjust blockY and blockX for large block positioning
+    % adjustedBlockY = (blockY - 1) / 2 + 1;
+    % adjustedBlockX = (blockX - 1) / 2 + 1;
+    % 
+    % % Calculate base offsets for large blocks
+    % baseRowOffset = (adjustedBlockY - 1) * blockSize + 1;
+    % baseColOffset = (adjustedBlockX - 1) * blockSize + 1;
 
-    % Calculate base offsets for large blocks
-    baseRowOffset = (adjustedBlockY - 1) * blockSize + 1;
-    baseColOffset = (adjustedBlockX - 1) * blockSize + 1;
+    baseRowOffset = (blockY - 1) * blockSize + 1;
+    baseColOffset = (blockX - 1) * blockSize + 1;
+
 
     % Determine prediction mode based on position
-    if adjustedBlockX == 1 && adjustedBlockY == 1
+    if blockY == 1 && blockX == 1
         mode = 'mid-gray';
-    elseif adjustedBlockY == 1
+    elseif blockY == 1
         mode = 'horizontal';
-    elseif adjustedBlockX == 1
+    elseif blockX == 1
         mode = 'vertical';
     else
         mode = 'compare';
     end
 
     % Call processBlock with adjusted offsets
-    [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame] = ...
+    [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame,approximatedresidualFrame] = ...
         processBlock(currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
-        blockY, blockX, baseRowOffset, baseColOffset, blockSize, dct_blockSize, baseQP, mode, isLarge);
+        blockY, blockX, baseRowOffset, baseColOffset, blockSize*2, dct_blockSize*2, baseQP, mode, isLarge);
 end
 
-function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame] = processBlock(...
+function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame,approximatedresidualFrame] = processBlock(...
     currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
     blockY, blockX, rowOffset, colOffset, blockSize, dct_blockSize, baseQP, mode, isLarge)
 
@@ -215,7 +221,6 @@ function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPr
 
     % Initialize prediction
     predBlock = zeros(actualBlockHeight, actualBlockWidth);
-    predictionMode = -1;
 
     % Prediction logic
     switch mode
@@ -296,11 +301,13 @@ function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPr
     % Quantize and inverse quantize the residual
     quantizedResidualBlock = quantization(residualBlock, dct_blockSize, actualBlockHeight, actualBlockWidth, baseQP);
     approximatedresidualBlock = invquantization(quantizedResidualBlock, dct_blockSize, actualBlockHeight, actualBlockWidth, baseQP);
-
+    
     % Reconstruct the block
     approximatedReconstructedBlock = predBlock + approximatedresidualBlock;
     approximatedReconstructedBlock = double(max(0, min(255, approximatedReconstructedBlock)));
+    
 
+    approximatedresidualFrame(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1) = approximatedresidualBlock;
     % Update the reconstructed frame
     approximatedReconstructedFrame(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1) = approximatedReconstructedBlock;
 end
