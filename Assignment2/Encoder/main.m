@@ -9,9 +9,9 @@ referenceFile = '../Outputs/referenceFrames.yuv';
 decodedFile = '../Outputs/decoded_Y_foreman.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
-numFrames = 5;                 % Number of frames to process
+numFrames = 3;                 % Number of frames to process
 searchRange = 8;                 % Search range r = 1,4, and 8
-QP = 5;
+QP = 3;
 j = 3;
 VBSEnable = true;
 FMEEnable = false;

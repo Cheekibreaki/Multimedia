@@ -77,10 +77,12 @@ function [total_bytes,bytes_list] = decoder(filename)
             pFrameCounter = 0;  % Reset the P-frame counter
             [nonimportant1,predictionModes,quantizedResiduals,vbs_matrix] = entropyDecode(isIFrame, [], encodedMDiff, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight, VBSEnable);
            
-            compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
+            
             if VBSEnable
+                compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
                 intraCompFrame = vbs_intraCompensation(predictionModes, compresiduals, blockSize,vbs_matrix);
             else
+                compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
                 intraCompFrame = intraCompensation(predictionModes, compresiduals, blockSize);
             end
 
