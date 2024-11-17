@@ -10,7 +10,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
     %   height      - Height of each frame
     %   blockSize   - Size of the block for motion estimation
     %   searchRange - Search range for motion estimation
-
+    lambda = lambda
     % Parameters for decoder
     params.width = width;                
     params.height = height;                

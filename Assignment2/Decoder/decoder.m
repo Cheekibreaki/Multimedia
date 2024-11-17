@@ -99,11 +99,11 @@ function [total_bytes,bytes_list] = decoder(filename)
                 interpolatedReferenceFrames{i} = 128 * ones(height*2 - 1, width*2 -1, 'uint8');  
             end
 
-            if VBSEnable
-                vbsVisualization(isIFrame,reconstructedFrame, vbs_matrix, blockSize, frameIdx, [], predictionModes);
-            else
-                predictionInfoVisualization(reconstructedFrame, predictionModes, frameIdx, isIFrame,blockSize);
-            end
+            % if VBSEnable
+            %     vbsVisualization(isIFrame,reconstructedFrame, vbs_matrix, blockSize, frameIdx, [], predictionModes);
+            % else
+            %     predictionInfoVisualization(reconstructedFrame, predictionModes, frameIdx, isIFrame,blockSize);
+            % end
           
         else
             [motionVectors,nonimportant1,quantizedResiduals,vbs_matrix] = entropyDecode(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,VBSEnable);
@@ -123,14 +123,14 @@ function [total_bytes,bytes_list] = decoder(filename)
             interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
              
            % Save the P-frame with overlays as an image
-            saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx);
+            % saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx);
             
-            if VBSEnable
-                vbsVisualization(isIFrame,reconstructedFrame, vbs_matrix, blockSize, frameIdx, motionVectors,[]);
-            else
-                predictionInfoVisualization(reconstructedFrame, motionVectors, frameIdx, isIFrame, blockSize);
-            end
-          
+            % if VBSEnable
+            %     vbsVisualization(isIFrame,reconstructedFrame, vbs_matrix, blockSize, frameIdx, motionVectors,[]);
+            % else
+            %     predictionInfoVisualization(reconstructedFrame, motionVectors, frameIdx, isIFrame, blockSize);
+            % end
+            % 
             % Increment the P-frame counter
             pFrameCounter = min(pFrameCounter + 1, nRefFrames); 
         end

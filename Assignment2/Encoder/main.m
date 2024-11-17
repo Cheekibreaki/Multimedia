@@ -15,7 +15,7 @@ QP = 3;
 j = 4;
 VBSEnable = true;
 FMEEnable = false;
-FastME = true;
+FastME = false;
 
 if(VBSEnable == true)
     j = j-1;
@@ -29,28 +29,38 @@ nRefFrames = 4;                 % Can take value from 1 to 4
 lambda = 0.65;
 % Pre-process
 
+QPs = [2,4,7];
 
 
-dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
-
-[paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
-
-% encoder
-encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME );
-[total_byte,bytes_list] = decoder(decodedFile);
-%decoder
-compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
-
-
-
-calculatePSNR(decodedFile, paddedOutputFile, width, height, numFrames)
+% dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
+% 
+% [paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
+% 
+% % encoder
+% encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME );
+% [total_byte,bytes_list] = decoder(decodedFile);
+% %decoder
+% compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
+% 
+% 
+% 
+% calculatePSNR(decodedFile, paddedOutputFile, width, height, numFrames)
 
 
 
 %All the graph for report:
 %generate_rd_analysis();
 
-%analyze_vbs_statistics();
+% 
+% analyze_vbs_statistics(filename, outputFile, paddedOutputFile, referenceFile, decodedFile, ...
+%                        width, height, numFrames, blockSize, searchRange, ...
+%                        I_Period, lambda, VBSEnable, FMEEnable, FastME, ...
+%                        nRefFrames, QPs);
+
+lambdatest(filename, outputFile, paddedOutputFile, referenceFile, decodedFile, ...
+                       width, height, numFrames, blockSize, searchRange, ...
+                       I_Period, lambda, VBSEnable, FMEEnable, FastME, ...
+                       nRefFrames, QPs);
 
 %analyze_reference_frames();
 
