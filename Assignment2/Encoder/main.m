@@ -50,7 +50,7 @@ calculatePSNR(decodedFile, paddedOutputFile, width, height, numFrames)
 %All the graph for report:
 %generate_rd_analysis();
 
-analyze_vbs_statistics();
+%analyze_vbs_statistics();
 
 %analyze_reference_frames();
 
