@@ -68,7 +68,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         else
             isIFrame = (mod(frameIdx - 1, I_Period) == 0);
         end
-         isIFrame = false;
+         %isIFrame = false;
 
         if isIFrame
            pFrameCounter = 0;
