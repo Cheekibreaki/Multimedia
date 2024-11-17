@@ -73,7 +73,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         if isIFrame
            pFrameCounter = 0;
            if VBSEnable
-               [predictedFrame, currPredictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction(currentFrame, blockSize,dct_blockSize,QP);
+               [predictedFrame, currPredictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction(currentFrame, blockSize,dct_blockSize,QP,lambda);
                MDiffModes = currPredictionModes;
               
            else
@@ -158,7 +158,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
                 compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
             end
         end
-        
+
         reconstructedFrame = double(predictedFrame) + double(compresiduals);
         reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
         interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);

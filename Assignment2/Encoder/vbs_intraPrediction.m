@@ -1,4 +1,4 @@
-function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP)
+function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP,lambda)
     [height, width] = size(currentFrame);
     approximatedPredictedFrame_split = zeros(size(currentFrame), 'double');
     approximatedPredictedFrame_large = zeros(size(currentFrame), 'double');
@@ -13,8 +13,6 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame]
     predictionModes_large = int32(zeros(numBlocksY, numBlocksX));
     predictionModes = int32(zeros(numBlocksY, numBlocksX));
     vbs_matrix = -1 * ones(numBlocksY, numBlocksX);
-
-    lambda = 0.01; % Adjust lambda based on RD optimization requirements
 
     for blockY = 1:2:numBlocksY
         for blockX = 1:2:numBlocksX

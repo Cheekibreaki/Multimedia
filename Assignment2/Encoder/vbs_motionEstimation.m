@@ -105,17 +105,18 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             
            
             % Calculate rate (R) for large and split blocks
-            R_large = (numel(encodedMDiff_large) + numel(encodedResidues_large)) / ...
-                      (numel(encodedMDiff_split) + numel(encodedResidues_split) + numel(encodedMDiff_large) + numel(encodedResidues_large));
+            total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);
+            total_bits_split = numel(encodedMDiff_split) + numel(encodedResidues_split);
 
-            R_split = (numel(encodedMDiff_split) + numel(encodedResidues_split)) / ...
-                      (numel(encodedMDiff_split) + numel(encodedResidues_split) + numel(encodedMDiff_large) + numel(encodedResidues_large));
+            R_large = total_bits_large;
+            R_split = total_bits_split;
 
-            D_large = SAD_large/(SAD_large+SAD_split);
-            D_split = SAD_split/(SAD_large+SAD_split);
-            
-            J_large = D_large + lambda*R_large;
-            J_split = D_split + lambda*R_split;
+            D_large = SAD_large;
+            D_split = SAD_split;
+
+            % Calculate RD cost
+            J_large = D_large + lambda * R_large;
+            J_split = D_split + lambda * R_split;
             
             % Choose the motion vector block with the lower MAE
             if J_large < J_split
