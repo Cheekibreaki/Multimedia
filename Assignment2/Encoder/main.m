@@ -26,7 +26,13 @@ dct_blockSize = 2^j;
 I_Period = 8; 
 nRefFrames = 1;                 % Can take value from 1 to 4
 
-lambda = 0.65;
+function lambda = get_lambda_for_qp(QP)
+    % Replace these coefficients with what you found from analyze_lambda_qp_relation
+    a = 0.1;  % Slope from the analysis
+    b = 0.2;  % Intercept from the analysis
+    lambda = a * QP + b;
+end
+lambda = get_lambda_for_qp(QP);
 % Pre-process
 
 QPs = [1,2,4,7,10];
@@ -64,4 +70,6 @@ generate_rd_analysis();
 %                        nRefFrames, QPs);
 
 %analyze_reference_frames();
+
+analyze_lambda_rd_plot();
 
