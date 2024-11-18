@@ -9,8 +9,8 @@ referenceFile = '../Outputs/referenceFrames.yuv';
 decodedFile = '../Outputs/decoded_Y_foreman.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
-numFrames = 3;                 % Number of frames to process
-searchRange = 8;                 % Search range r = 1,4, and 8
+numFrames = 10;                 % Number of frames to process
+searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 3;
 j = 4;
 VBSEnable = true;
@@ -23,13 +23,13 @@ end
 
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
-I_Period = 5; 
-nRefFrames = 4;                 % Can take value from 1 to 4
+I_Period = 8; 
+nRefFrames = 1;                 % Can take value from 1 to 4
 
 lambda = 0.65;
 % Pre-process
 
-QPs = [2,4,7];
+QPs = [1,2,4,7,10];
 
 
 % dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
@@ -49,18 +49,19 @@ QPs = [2,4,7];
 
 
 %All the graph for report:
-%generate_rd_analysis();
+generate_rd_analysis();
 
+% 
 % 
 % analyze_vbs_statistics(filename, outputFile, paddedOutputFile, referenceFile, decodedFile, ...
 %                        width, height, numFrames, blockSize, searchRange, ...
 %                        I_Period, lambda, VBSEnable, FMEEnable, FastME, ...
 %                        nRefFrames, QPs);
-
-lambdatest(filename, outputFile, paddedOutputFile, referenceFile, decodedFile, ...
-                       width, height, numFrames, blockSize, searchRange, ...
-                       I_Period, lambda, VBSEnable, FMEEnable, FastME, ...
-                       nRefFrames, QPs);
+% 
+% lambdatest(filename, outputFile, paddedOutputFile, referenceFile, decodedFile, ...
+%                        width, height, numFrames, blockSize, searchRange, ...
+%                        I_Period, lambda, VBSEnable, FMEEnable, FastME, ...
+%                        nRefFrames, QPs);
 
 %analyze_reference_frames();
 

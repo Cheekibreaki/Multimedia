@@ -8,11 +8,11 @@ function generate_rd_analysis()
     width = 352;
     height = 288;
     numFrames = 10;
-    blockSize = 16;
+    blockSize = 8;
     searchRange = 4;
     I_Period = 8;
-    QPs = [1, 4, 7, 10];
-    lambda = 1;
+    QPs = [1, 2, 4, 7, 10];
+    lambdas = [0,0.166667,0.166667,0.22222,0.5];
 
     % Define configurations as a struct array
     configs = struct([]);
@@ -23,20 +23,30 @@ function generate_rd_analysis()
     configs(1).fastme = false;
     configs(1).nref = 1;
     configs(1).name = 'Base';
+    configs(1).blockSize = 16;
+    configs(1).searchRange = 4;
+
+
     
+
+
     % VBS only
     configs(2).vbs = true;
     configs(2).fme = false;
     configs(2).fastme = false;
     configs(2).nref = 1;
     configs(2).name = 'VBS only';
-    
+    configs(2).blockSize = 8;
+    configs(2).searchRange = 4;
+
     % FME only
     configs(3).vbs = false;
     configs(3).fme = true;
     configs(3).fastme = false;
     configs(3).nref = 1;
     configs(3).name = 'FME only';
+    configs(3).blockSize = 16;
+    configs(3).searchRange = 4;
     
     % FastME only
     configs(4).vbs = false;
@@ -44,20 +54,44 @@ function generate_rd_analysis()
     configs(4).fastme = true;
     configs(4).nref = 1;
     configs(4).name = 'FastME only';
-    
+    configs(4).blockSize = 16;
+    configs(4).searchRange = 4;
+
     % Multiple reference frames only
     configs(5).vbs = false;
     configs(5).fme = false;
     configs(5).fastme = false;
     configs(5).nref = 4;
     configs(5).name = 'MultiRef only';
-    
+    configs(5).blockSize = 16;
+    configs(5).searchRange = 4;
+
     % All features
     configs(6).vbs = true;
     configs(6).fme = true;
     configs(6).fastme = true;
     configs(6).nref = 4;
     configs(6).name = 'All Features';
+    configs(6).blockSize = 8;
+    configs(6).searchRange = 4;
+
+    % Base encoder
+    configs(7).vbs = false;
+    configs(7).fme = false;
+    configs(7).fastme = false;
+    configs(7).nref = 1;
+    configs(7).name = 'Base_halfblocksize';
+    configs(7).blockSize = 8;
+    configs(7).searchRange = 4;
+
+    % Base encoder
+    configs(8).vbs = false;
+    configs(8).fme = false;
+    configs(8).fastme = false;
+    configs(8).nref = 1;
+    configs(8).name = 'Base_doubleSearchRange';
+    configs(8).blockSize = 16;
+    configs(8).searchRange = 8;
 
     % Initialize results storage
     results = struct();
@@ -72,7 +106,7 @@ function generate_rd_analysis()
     if ~exist('../Outputs', 'dir')
         mkdir('../Outputs');
     end
-
+    colors = lines(length(configs));
     % Pre-process video
     dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
     [paddedWidth, paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
@@ -90,8 +124,8 @@ function generate_rd_analysis()
             
             % Run encoder with current configuration
             encoder(referenceFile, paddedOutputFile, numFrames, paddedWidth, paddedHeight, ...
-                   blockSize, searchRange, blockSize, QP, I_Period, configs(c).nref, ...
-                   lambda, configs(c).vbs, configs(c).fme, configs(c).fastme);
+                   configs(c).blockSize, configs(c).searchRange, configs(c).blockSize, QP, I_Period, configs(c).nref, ...
+                   lambdas(qp_idx), configs(c).vbs, configs(c).fme, configs(c).fastme);
             
             % Run decoder
             [total_bytes, bytes_list] = decoder(decodedFile);
@@ -113,8 +147,8 @@ function generate_rd_analysis()
 
     % RD curve subplot
     subplot(1, 2, 1);
-    colors = lines(length(configs));
-    markers = {'o', 's', 'd', '^', 'v', 'p'};
+    
+    markers = {'o', 's', 'd', '^', 'v', 'p', 'h', 'x'};
     
     for i = 1:length(results)
         plot(results(i).bitrates, results(i).psnrs, ...

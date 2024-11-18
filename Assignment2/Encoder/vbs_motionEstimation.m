@@ -90,6 +90,7 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             reconstructed_split = predictedFrame_block_split + compresiduals_split;
             reconstructed_large = predictedFrame_block_large + compresiduals_large;
             
+            
 
             % Compute SAD for reconstructed_split
             SAD_split = sum(sum(abs(double(currentBlock) - double(reconstructed_split))));
@@ -107,12 +108,14 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             % Calculate rate (R) for large and split blocks
             total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);
             total_bits_split = numel(encodedMDiff_split) + numel(encodedResidues_split);
+            
+            
 
-            R_large = total_bits_large;
-            R_split = total_bits_split;
-
-            D_large = SAD_large;
-            D_split = SAD_split;
+            R_large = total_bits_large/total_bits_large+total_bits_split;
+            R_split = total_bits_split/total_bits_large+total_bits_split;
+        
+            D_large = SAD_large/SAD_split+SAD_large;
+            D_split = SAD_split/SAD_split+SAD_large;
 
             % Calculate RD cost
             J_large = D_large + lambda * R_large;

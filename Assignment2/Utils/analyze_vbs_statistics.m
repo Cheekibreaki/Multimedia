@@ -2,6 +2,9 @@ function analyze_vbs_statistics(filename, outputFile, paddedOutputFile, referenc
                                  width, height, numFrames, blockSize, searchRange, ...
                                  I_Period, lambda, VBSEnable, FMEEnable, FastME, ...
                                  nRefFrames, QPs)
+    
+
+    
 
     % Initialize storage for VBS statistics
     split_percentages = zeros(1, length(QPs));
@@ -26,6 +29,22 @@ function analyze_vbs_statistics(filename, outputFile, paddedOutputFile, referenc
     % Test each QP value
     for qp_idx = 1:length(QPs)
         QP = QPs(qp_idx);
+
+        if QP == 1
+            lambda = 0;
+        elseif QP == 2
+            lambda = 0.1667;
+        elseif QP == 4
+            lambda = 0.1667;
+        elseif QP == 7
+            lambda = 0.222;
+        elseif QP == 10
+            lambda = 0.5;
+        else
+            % Handle other cases if needed
+            lambda = NaN;  % Example: set to NaN if QP is not 1, 4, 7, or 10
+        end
+
         fprintf('Processing QP = %d\n', QP);
 
         % Run encoder

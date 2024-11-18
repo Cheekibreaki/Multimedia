@@ -9,15 +9,15 @@ function lambdatest(filename, outputFile, paddedOutputFile, referenceFile, decod
         
         % https://ieeexplore.ieee.org/document/1626308
         if QP == 1
-            Lambdas = linspace(0, 2, 5);
+            Lambdas = linspace(0, 1, 7);
         elseif QP == 2
-            Lambdas = linspace(1.5, 2, 7);
+            Lambdas = linspace(0, 1, 7);
         elseif QP == 4
-            Lambdas = linspace(1, 2, 7);
+            Lambdas = linspace(0, 1, 7);
         elseif QP == 7
-            Lambdas = linspace(0, 2, 7);
+            Lambdas = linspace(0, 1, 10);
         elseif QP == 10
-            Lambdas = linspace(0, 2, 5);
+            Lambdas = linspace(0, 1, 7);
         end
         
 
