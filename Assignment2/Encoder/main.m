@@ -48,10 +48,10 @@ lambda = get_lambda_for_qp(QP);
 QPs = [1,2,4,7,10];
 
 
-% dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
-% 
-% [paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
-% 
+dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
+
+[paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
+
 % % encoder
 encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME );
 [total_byte,bytes_list] = decoder(decodedFile);
