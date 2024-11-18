@@ -11,7 +11,7 @@ width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 10;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
-QP = 3;
+QP = 4;
 j = 4;
 VBSEnable = true;
 FMEEnable = false;
@@ -24,13 +24,23 @@ end
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
 I_Period = 8; 
-nRefFrames = 1;                 % Can take value from 1 to 4
+nRefFrames = 4;                 % Can take value from 1 to 4
 
 function lambda = get_lambda_for_qp(QP)
-    % Replace these coefficients with what you found from analyze_lambda_qp_relation
-    a = 0.1;  % Slope from the analysis
-    b = 0.2;  % Intercept from the analysis
-    lambda = a * QP + b;
+   if QP == 1
+            lambda = 0.02;
+        elseif QP == 2
+            lambda = 0.1667;
+        elseif QP == 4
+            lambda = 0.1667;
+        elseif QP == 7
+            lambda = 0.222;
+        elseif QP == 10
+            lambda = 0.5;
+        else
+            % Handle other cases if needed
+            lambda = NaN;  % Example: set to NaN if QP is not 1, 4, 7, or 10
+   end
 end
 lambda = get_lambda_for_qp(QP);
 % Pre-process
@@ -43,8 +53,8 @@ QPs = [1,2,4,7,10];
 % [paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
 % 
 % % encoder
-% encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME );
-% [total_byte,bytes_list] = decoder(decodedFile);
+encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME );
+[total_byte,bytes_list] = decoder(decodedFile);
 % %decoder
 % compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
 % 
@@ -55,7 +65,7 @@ QPs = [1,2,4,7,10];
 
 
 %All the graph for report:
-generate_rd_analysis();
+%generate_rd_analysis();
 
 % 
 % 
@@ -71,5 +81,5 @@ generate_rd_analysis();
 
 %analyze_reference_frames();
 
-analyze_lambda_rd_plot();
+%analyze_lambda_rd_plot();
 

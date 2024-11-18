@@ -31,7 +31,7 @@ function analyze_vbs_statistics(filename, outputFile, paddedOutputFile, referenc
         QP = QPs(qp_idx);
 
         if QP == 1
-            lambda = 0;
+            lambda = 0.02;
         elseif QP == 2
             lambda = 0.1667;
         elseif QP == 4
