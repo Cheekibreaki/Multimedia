@@ -1,4 +1,4 @@
-function [motionVectors, avgMAE,vbs_matrix] = vbs_MEBlockParallel(currentFrame,originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize,QP,lambda,FMEEnable, FastME)
+function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode1(currentFrame,originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize,QP,lambda,FMEEnable, FastME)
     % Motion Estimation function that processes blocks in raster order.
     % Calls findBestMatch to find the best matching block in the reference frame.
     %

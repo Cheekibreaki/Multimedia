@@ -75,14 +75,14 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
            pFrameCounter = 0;
            if VBSEnable
                if mode == 2
-                    [predictedFrame, currPredictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction_block_parallel(currentFrame, blockSize,dct_blockSize,QP,lambda);
+                    [predictedFrame, currPredictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction_Mode2(currentFrame, blockSize,dct_blockSize,QP,lambda);
                else
                     [predictedFrame, currPredictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction(currentFrame, blockSize,dct_blockSize,QP,lambda);
                end
                MDiffModes = currPredictionModes;
            else
                if mode == 2
-                    [predictedFrame, currPredictionModes] = intraPrediction_block_parallel(currentFrame, blockSize,dct_blockSize,QP);
+                    [predictedFrame, currPredictionModes] = intraPrediction_Mode2(currentFrame, blockSize,dct_blockSize,QP);
                else
                     [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP);
                end

@@ -1,6 +1,10 @@
-function [approximatedPredictedFrame, predictionModes] = intraPrediction_block_parallel(currentFrame, blockSize, dct_blockSize, baseQP)
+function [approximatedPredictedFrame, predictionModes] = intraPrediction_Mode2(currentFrame, blockSize, dct_blockSize, baseQP)
     % Type 2: Block-level parallelism (Wavefront)
-    % Implements diagonal (wavefront) processing with parallelism using `parfor`.
+    % Implements diagonal (wavefront) processing with parallelism using
+    % `parfor`. Each wavefront can be processed in parallel.
+    % After trying this approach, we realize the communication overhead between threads is
+    % larger than the parallel benefit. So we switched to row based implementation
+    % in vbs_intraPrecition_block_parallel.m
     
     [height, width] = size(currentFrame);
     approximatedPredictedFrame = zeros(size(currentFrame), 'double');

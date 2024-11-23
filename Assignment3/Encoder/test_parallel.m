@@ -12,7 +12,7 @@ height = 288;                    % Frame height
 numFrames = 20;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
 j = 4;
-VBSEnable = true;
+VBSEnable = false;
 FMEEnable = false;
 FastME = false;
 
@@ -23,7 +23,7 @@ end
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
 I_Period = 10; 
-nRefFrames = 1;                 % Can take value from 1 to 4
+nRefFrames = 4;                 % Can take value from 1 to 4
 
 QPs = [1, 2, 4, 7, 10];
 lambdas = [0,0.166667,0.166667,0.22222,0.5];

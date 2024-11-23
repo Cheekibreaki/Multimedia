@@ -1,5 +1,5 @@
 function [approximatedPredictedFrame, predictionModes, vbs_matrix, residualFrame] = ...
-    vbs_intraPrediction_block_parallel(currentFrame, blockSize, dct_blockSize, baseQP, lambda)
+    vbs_intraPrediction_Mode2(currentFrame, blockSize, dct_blockSize, baseQP, lambda)
     % VBS Intra Prediction with spmd-based Parallelism
     % Each worker processes alternating rows (odd/even). This ensures that
     % before processing a block, the necessary data from previous row
@@ -18,8 +18,11 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix, residualFrame
     bigBlockXnum = ceil(numBlocksX / 2);
 
     % Divide work among two workers
+    % Worker 1: Process odd rows and send the block to worker 2 as soon as the block is processed. It would start processing the next odd row when receiving the row above it from worker 2.
+    % Worker 2: When it gets the block above it from worker 1, it can start processing the even rows.After the whole row is processed, the row is send to worker 1. 
     spmd(2)
-         % Debugging inside spmd
+        
+    % Debugging inside spmd
     % if spmdIndex == 1
     %     disp('Worker 1 - Current vbs_matrix:');
     %     disp(vbs_matrix);
@@ -27,25 +30,39 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix, residualFrame
     %     disp('Worker 2 - Current vbs_matrix:');
     %     disp(vbs_matrix);
     % end
-        if spmdIndex == 1
-            % Worker 1: Process odd rows and send the block to worker 2 as
-            % soon as the block is processed.
+       
             localPredictedFrame = zeros(size(currentFrame), 'double');
             localReconstructedFrame = zeros(size(currentFrame), 'double');
             localResidualFrame = zeros(size(currentFrame), 'double');
             localPredictionModes = int32(zeros(numBlocksY, numBlocksX));
             localVBSMatrix = -1 * ones(numBlocksY, numBlocksX);
-
+            
+             if spmdIndex == 1
+                % Worker 1 processes odd rows 
+                rowStart = 1;
+            else
+                % Worker 2 processes even rows 
+                rowStart = 2;
+            end
         % Process rows assigned to this worker
-            for bigBlockY = 1:2:bigBlockYnum
+            for bigBlockY = rowStart:2:bigBlockYnum
                
-                % If not the first row, receive reconstructed row from worker 2
-                if bigBlockY > 1
-                reconstructedRow = spmdReceive;
-                localReconstructedFrame((bigBlockY-2)*2*blockSize+1 : (bigBlockY-1)*2*blockSize, :) = reconstructedRow;
+                % If not the first row, worker 1 receive reconstructed row from worker 2
+                if spmdIndex ==1 
+                    if bigBlockY > 1
+                    reconstructedRow = spmdReceive;
+                    localReconstructedFrame((bigBlockY-2)*2*blockSize+1 : (bigBlockY-1)*2*blockSize, :) = reconstructedRow;
+                    end
                 end
 
                 for bigBlockX = 1:bigBlockXnum
+                    
+                    % Worker 2 receives the block directly above it from worker 1
+                    if spmdIndex ==2
+                        receivedBlock = spmdReceive(1); 
+                        localReconstructedFrame((bigBlockY -2)*(2*blockSize)+1 : (bigBlockY -1)*(2*blockSize),...
+                                                ((bigBlockX -1)*(2*blockSize)+1 : bigBlockX*2*blockSize)) = receivedBlock;
+                    end   
                     
                     % Extract the block for RD cost calculation
                     % Translate from big block idx to small block idx
@@ -109,104 +126,22 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix, residualFrame
                     end
                     
                     % If Worker 1, send reconstructed block to Worker 2
-                    
-                    spmdSend(localReconstructedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1), 2);
-                    
-
-                end
-   
-            end
-            %receive the last row from worker 2
-            spmdReceive;
-       
-        elseif spmdIndex == 2
-             % Worker 2: Process even rows and send the entire row to worker 1
-            localPredictedFrame = zeros(size(currentFrame), 'double');
-            localReconstructedFrame = zeros(size(currentFrame), 'double');
-            localResidualFrame = zeros(size(currentFrame), 'double');
-            localPredictionModes = int32(zeros(numBlocksY, numBlocksX));
-            localVBSMatrix = -1 * ones(numBlocksY, numBlocksX);
-
-        % Process rows assigned to this worker
-            for bigBlockY = 2:2:bigBlockYnum
-               
-                for bigBlockX = 1:bigBlockXnum
-                    
-                    % Receive reconstructed BIG BLOCK of last row from Worker 1
-                    
-                    receivedBlock = spmdReceive(1); % Receive from Worker 1
-                    localReconstructedFrame((bigBlockY -2)*(2*blockSize)+1 : (bigBlockY -1)*(2*blockSize),...
-                                            ((bigBlockX -1)*(2*blockSize)+1 : bigBlockX*2*blockSize)) = receivedBlock;
-                  
-    
-                    % Extract the block for RD cost calculation
-                    % Translate from big block idx to small block idx
-                    blockY = 2 * bigBlockY -1;
-                    blockX = 2 * bigBlockX -1;
-    
-                    % Translate from small block idx to pixel values
-                    rowOffset = (blockY - 1) * blockSize + 1;
-                    colOffset = (blockX - 1) * blockSize + 1;
-                    actualBlockHeight = 2 * blockSize;
-                    actualBlockWidth = 2 * blockSize;
-    
-                    currentBlock = currentFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1);
-    
-                    % VBS split estimation
-                 [quantized_residualBlock_split, approximatedReconstructed_block_split, approximatedPredictedFrame_split, predictionModes_split, approximatedReconstructedFrame_split] = ...
-                     VBS_split_estimation(currentFrame, localPredictedFrame, localPredictionModes, localReconstructedFrame, ...
-                     blockY, blockX, blockSize, dct_blockSize, baseQP, numBlocksY, numBlocksX);
-                   
-                 % VBS large estimation
-                [quantized_residualBlock_large, approximatedReconstructed_block_large, approximatedPredictedFrame_large, predictionModes_large, approximatedReconstructedFrame_large] = ...
-                    VBS_large_estimation(currentFrame, localPredictedFrame, localPredictionModes, localReconstructedFrame, ...
-                    blockY, blockX, blockSize, dct_blockSize, baseQP);
-                    
-    
-                  % Compute SAD for reconstructed_split
-                    SAD_split = sum(sum(abs(double(currentBlock) - double(approximatedReconstructed_block_split))));
-                  % Compute SAD for reconstructed_large
-                    SAD_large = sum(sum(abs(double(currentBlock) - double(approximatedReconstructed_block_large))));
-                    
-                     [encodedMDiff_large, encodedResidues_large] = entropyEncode(true, [], predictionModes_large(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_large);
-                     [encodedMDiff_split, encodedResidues_split] = entropyEncode(true, [], predictionModes_split(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_split);
-        
-                    % Rate-Distortion Cost Calculation
-                    % Calculate rate (R) for large and split blocks
-                    total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);
-                    total_bits_split = numel(encodedMDiff_split) + numel(encodedResidues_split);
-        
-                    R_large = total_bits_large / (total_bits_large + total_bits_split);
-                    R_split = total_bits_split / (total_bits_large + total_bits_split);
-        
-                    D_large = SAD_large / (SAD_large + SAD_split);
-                    D_split = SAD_split / (SAD_large + SAD_split);
-        
-                    J_large = D_large + lambda * R_large;
-                    J_split = D_split + lambda * R_split;
-        
-        
-                    if J_large < J_split
-                        localReconstructedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = approximatedReconstructed_block_large;
-                        localPredictedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = approximatedPredictedFrame_large(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1);
-                        localResidualFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = quantized_residualBlock_large;
-                        localPredictionModes(blockY:blockY+1, blockX:blockX+1) = predictionModes_large(blockY:blockY+1, blockX:blockX+1);
-                        localVBSMatrix(blockY:blockY+1, blockX:blockX+1) = 0;
-                    else
-                        localReconstructedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = approximatedReconstructed_block_split;
-                        localPredictedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = approximatedPredictedFrame_split(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1);
-                        localResidualFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = quantized_residualBlock_split;
-                        localPredictionModes(blockY:blockY+1, blockX:blockX+1) = predictionModes_split(blockY:blockY+1, blockX:blockX+1);
-                        localVBSMatrix(blockY:blockY+1, blockX:blockX+1) = 1;
+                    if spmdIndex == 1
+                        spmdSend(localReconstructedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1), 2);
                     end
 
                 end
-                % Worker 2 sends reconstructed row to Worker 1
-                spmdSend(localReconstructedFrame((bigBlockY-1)*blockSize*2+1 : bigBlockY*blockSize*2,:), 1);
+                % If Worker 2 sends reconstructed row to Worker 1
+                if spmdIndex ==2
+                    spmdSend(localReconstructedFrame((bigBlockY-1)*blockSize*2+1 : bigBlockY*blockSize*2,:), 1);
+                end
             end
-        end
-     end
-
+            % Worker 1 receive the last row from worker 2
+            if spmdIndex == 1
+             spmdReceive;
+            end
+    end  
+            
     % Combine results from both workers
     approximatedPredictedFrame = localPredictedFrame{1} + localPredictedFrame{2};
     residualFrame = localResidualFrame{1} + localResidualFrame{2};
@@ -223,7 +158,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix, residualFrame
         end
      end
 
-
+    
 end
 
 

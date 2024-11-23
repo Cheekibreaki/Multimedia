@@ -13,10 +13,10 @@ numFrames = 10;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 4;
 j = 4;
-VBSEnable = false;
+VBSEnable = true;
 FMEEnable = false;
 FastME = false;
-mode = 0;
+mode = 1;
 
 if(VBSEnable == true)
     j = j-1;
@@ -54,7 +54,11 @@ dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
 [paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
 
 %  encoder
+if mode == 1
+encoder_mode1(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,mode);
+else
 encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,mode);
+end
 [total_byte,bytes_list] = decoder(decodedFile,mode);
 % decoder
  compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
