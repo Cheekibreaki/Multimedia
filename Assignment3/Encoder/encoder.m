@@ -121,7 +121,8 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         if isIFrame
            if VBSEnable
                quantizedResiduals = residualFrame;
-                [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
+               
+               [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
            else
                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
                [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);

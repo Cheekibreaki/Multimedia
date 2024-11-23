@@ -22,13 +22,13 @@ end
 
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
-I_Period = 1; 
+I_Period = 10; 
 nRefFrames = 1;                 % Can take value from 1 to 4
 
 QPs = [1, 2, 4, 7, 10];
 lambdas = [0,0.166667,0.166667,0.22222,0.5];
 
-coreCount = 10;
+coreCount = 2;
 % Start parallel pool
 parpool(coreCount);
 
