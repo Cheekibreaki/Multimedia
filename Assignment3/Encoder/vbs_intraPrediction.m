@@ -49,11 +49,11 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame]
             total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);
             total_bits_split = numel(encodedMDiff_split) + numel(encodedResidues_split);
 
-            R_large = total_bits_large/total_bits_large+total_bits_split;
-            R_split = total_bits_split/total_bits_large+total_bits_split;
+            R_large = total_bits_large/(total_bits_large+total_bits_split);
+            R_split = total_bits_split/(total_bits_large+total_bits_split);
         
-            D_large = SAD_large/SAD_split+SAD_large;
-            D_split = SAD_split/SAD_split+SAD_large;
+            D_large = SAD_large/(SAD_split+SAD_large);
+            D_split = SAD_split/(SAD_split+SAD_large);
 
 
             % Calculate RD cost

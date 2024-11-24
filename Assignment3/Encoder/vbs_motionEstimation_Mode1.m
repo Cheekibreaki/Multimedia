@@ -122,11 +122,11 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode1(current
             
             
 
-            R_large = total_bits_large/total_bits_large+total_bits_split;
-            R_split = total_bits_split/total_bits_large+total_bits_split;
+            R_large = total_bits_large/(total_bits_large+total_bits_split);
+            R_split = total_bits_split/(total_bits_large+total_bits_split);
         
-            D_large = SAD_large/SAD_split+SAD_large;
-            D_split = SAD_split/SAD_split+SAD_large;
+            D_large = SAD_large/(SAD_split+SAD_large);
+            D_split = SAD_split/(SAD_split+SAD_large);
 
             % Calculate RD cost
             J_large = D_large + lambda * R_large;
@@ -226,6 +226,8 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
     % Split current block into 4 pieces and find the best match for each
     motionVector_block = zeros(2, 2, 3);
     subBlockSize = currentBlockSize / 2;
+    predictedMV_new = reshape(predictedMV(:,:,1:2), 1, 2); % Explicitly reshape to 1x2
+    predictedMV = predictedMV_new;
     if FMEEnable
         referenceFrames = interpolatedReferenceFrames;
     else
@@ -239,7 +241,7 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
             if FMEEnable
                 if FastME
                 % If fast ME is enabled
-                    [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, rowOffset,  colOffset, currentBlockSize, searchRange, zeros(1, 1, 3));
+                    [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, rowOffset,  colOffset, currentBlockSize, searchRange, predictedMV);
                 else
                 % If fast ME is NOT enabled
                     [vector, mae, L1Norm] = findBestMatchFractionalPixel(currentBlock, referenceFrame,rowOffset,  colOffset, currentBlockSize, searchRange);
@@ -248,7 +250,7 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
             % If fractional ME is NOT enabled
                 if FastME
                 % If fast ME is enabled
-                    [vector, mae, L1Norm] = findBestMatchFast(currentBlock, referenceFrame,rowOffset,  colOffset, currentBlockSize,searchRange, zeros(1, 1, 3));
+                    [vector, mae, L1Norm] = findBestMatchFast(currentBlock, referenceFrame,rowOffset,  colOffset, currentBlockSize,searchRange, predictedMV);
                 else
                 % If fast ME is NOT enabled
                     [vector, mae, L1Norm] = findBestMatchFullPixel(currentBlock, referenceFrame, rowOffset,  colOffset, currentBlockSize, searchRange);
@@ -305,7 +307,7 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
                         if FastME
                         % If fast ME is enabled
                         
-                            [vector, mae, L1Norm] = findBestMatchFastFraction(subBlock, referenceFrame, rowOffset + subBlockY - 1,  colOffset + subBlockX - 1, subBlockSize, searchRange, zeros(1, 1, 3));
+                            [vector, mae, L1Norm] = findBestMatchFastFraction(subBlock, referenceFrame, rowOffset + subBlockY - 1,  colOffset + subBlockX - 1, subBlockSize, searchRange, predictedMV);
                         else
                         % If fast ME is NOT enabled
                             [vector, mae, L1Norm] = findBestMatchFractionalPixel(subBlock, referenceFrame, rowOffset + subBlockY - 1,  colOffset + subBlockX - 1,  subBlockSize, searchRange);
@@ -314,7 +316,7 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
                     % If fractional ME is NOT enabled
                         if FastME
                         % If fast ME is enabled
-                            [vector, mae, L1Norm] = findBestMatchFast(subBlock, referenceFrame,rowOffset + subBlockY - 1,  colOffset + subBlockX - 1,  subBlockSize,searchRange, zeros(1, 1, 3));
+                            [vector, mae, L1Norm] = findBestMatchFast(subBlock, referenceFrame,rowOffset + subBlockY - 1,  colOffset + subBlockX - 1,  subBlockSize,searchRange, predictedMV);
                         else
                         % If fast ME is NOT enabled
                             [vector, mae, L1Norm] = findBestMatchFullPixel(subBlock, referenceFrame,rowOffset + subBlockY - 1,  colOffset + subBlockX - 1, subBlockSize, searchRange);
@@ -344,5 +346,7 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
         total_minMAE = total_minMAE/4;
     end
 end
+
+
 
 

@@ -143,18 +143,19 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix, residualFrame
     end  
             
     % Combine results from both workers
-    approximatedPredictedFrame = localPredictedFrame{1} + localPredictedFrame{2};
-    residualFrame = localResidualFrame{1} + localResidualFrame{2};
-    predictionModes = localPredictionModes{1} + localPredictionModes{2};
-    
      for bigBlockY = 1:bigBlockYnum
         if mod(bigBlockY, 2) == 1
             % first worker
+            approximatedPredictedFrame((bigBlockY-1)* 2*blockSize +1: bigBlockY * 2 * blockSize,:) = localPredictedFrame{1}((bigBlockY-1)* 2 * blockSize +1: bigBlockY * 2 * blockSize,:);
+            residualFrame((bigBlockY-1)* 2 * blockSize +1: bigBlockY * 2 * blockSize,:) = localResidualFrame{1}((bigBlockY-1)* 2 * blockSize +1: bigBlockY * 2 * blockSize,:);
             vbs_matrix(2*bigBlockY-1:2*bigBlockY, :) = localVBSMatrix{1}(2*bigBlockY-1:2*bigBlockY, :);
-            %predictionModes(2*bigBlockY-1:2*bigBlockY, :) = localPredictionModes{1}(2*bigBlockY-1:2*bigBlockY, :);
+            predictionModes(2*bigBlockY-1:2*bigBlockY, :) = localPredictionModes{1}(2*bigBlockY-1:2*bigBlockY, :);
         else
+            % second worker
+           approximatedPredictedFrame((bigBlockY-1)* 2 * blockSize +1: bigBlockY * 2 * blockSize,:) = localPredictedFrame{2}((bigBlockY-1)* 2 * blockSize +1: bigBlockY * 2 * blockSize,:);
+           residualFrame((bigBlockY-1)* 2 * blockSize +1: bigBlockY * 2 * blockSize,:) = localResidualFrame{2}((bigBlockY-1)* 2 * blockSize +1: bigBlockY * 2 * blockSize,:);
            vbs_matrix(2*bigBlockY-1:2*bigBlockY, :) = localVBSMatrix{2}(2*bigBlockY-1:2*bigBlockY, :);
-           %predictionModes(2*bigBlockY-1:2*bigBlockY, :) = localPredictionModes{2}(2*bigBlockY-1:2*bigBlockY, :);
+           predictionModes(2*bigBlockY-1:2*bigBlockY, :) = localPredictionModes{2}(2*bigBlockY-1:2*bigBlockY, :);
         end
      end
 

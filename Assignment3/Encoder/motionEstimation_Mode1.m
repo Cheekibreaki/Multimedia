@@ -1,17 +1,5 @@
 function [motionVectors, avgMAE] = motionEstimation_Mode1(currentFrame, originalReferenceFrames,interpolatedReferenceFrames, blockSize, searchRange, FMEEnable, FastME)
-    % Motion Estimation function that processes blocks in raster order.
-    % Calls findBestMatch to find the best matching block in the reference frame.
-    %
-    % Parameters:
-    %   currentFrame - The Y component of the current frame (grayscale image)
-    %   referenceFrame - The Y component of the reference frame (grayscale image)
-    %   blockSize - The size of the blocks (e.g., 8x8)
-    %   searchRange - The maximum number of pixels to search in any direction for motion
-    %   mvFile - The file to save motion vectors
-    %
-    % Returns:
-    %   motionVectors - An array of motion vectors for each block
-    %   avgMAE - The average Mean Absolute Error for the entire frame
+    % Motion Estimation function that processes all blocks in parallel.(Mode 1)
 
     % Get the dimensions of the frame
     [height, width] = size(currentFrame);%288 * 352
@@ -61,7 +49,7 @@ function [motionVectors, avgMAE] = motionEstimation_Mode1(currentFrame, original
                 if FMEEnable
                     if FastME
                     % If fast ME is enabled
-                        [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, row, col, blockSize, searchRange, predictedMV);
+                        [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, row, col, blockSize, searchRange, [0,0]);
                     else
                     % If fast ME is NOT enabled
                         [vector, mae, L1Norm] = findBestMatchFractionalPixel(currentBlock, referenceFrame, row, col, blockSize, searchRange);
@@ -70,7 +58,7 @@ function [motionVectors, avgMAE] = motionEstimation_Mode1(currentFrame, original
                 % If fractional ME is NOT enabled
                     if FastME
                     % If fast ME is enabled
-                        [vector, mae, L1Norm] = findBestMatchFast(currentBlock, referenceFrame, row, col, blockSize, searchRange, predictedMV);
+                        [vector, mae, L1Norm] = findBestMatchFast(currentBlock, referenceFrame, row, col, blockSize, searchRange, [0,0]);
                     else
                     % If fast ME is NOT enabled
                         [vector, mae, L1Norm] = findBestMatchFullPixel(currentBlock, referenceFrame, row, col, blockSize, searchRange);

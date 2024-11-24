@@ -81,11 +81,11 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
                end
                MDiffModes = currPredictionModes;
            else
-               if mode == 2
-                    [predictedFrame, currPredictionModes] = intraPrediction_Mode2(currentFrame, blockSize,dct_blockSize,QP);
-               else
+                if mode == 2
+                     [predictedFrame, currPredictionModes] = intraPrediction_Mode2(currentFrame, blockSize,dct_blockSize,QP);
+                else
                     [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP);
-               end
+                end
                MDiffModes = diffEncoding(currPredictionModes,'modes');
                Residuals = double(currentFrame) - double(predictedFrame);
            end
@@ -100,11 +100,15 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             validInterpolatedRefFrames = interpolatedReferenceFrames(1:min(pFrameCounter + 1, nRefFrames));
             % Motion estimation
             if VBSEnable
-                % Should use blockSize/2 here, same of motion compensation?
+                
                 [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
                 MDiffMV = currMotionVectors;
             else
-                [currMotionVectors, avgMAE] = motionEstimation(currentFrame, validRefFrames,validInterpolatedRefFrames, blockSize, searchRange,FMEEnable, FastME);
+                if mode == 2
+                    [currMotionVectors, avgMAE] = motionEstimation_Mode2(currentFrame, validRefFrames,validInterpolatedRefFrames, blockSize, searchRange,FMEEnable, FastME);
+                else
+                    [currMotionVectors, avgMAE] = motionEstimation(currentFrame, validRefFrames,validInterpolatedRefFrames, blockSize, searchRange,FMEEnable, FastME);
+                end
                 MDiffMV = diffEncoding(currMotionVectors,'mv');
             end
             % Motion compensation to get the predicted frame

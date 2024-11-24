@@ -29,10 +29,10 @@ function [motionVectors, avgMAE] = motionEstimation(currentFrame, originalRefere
     motionVectors = zeros(numBlocksY, numBlocksX, 3);  % Stores motion vector for each block.
 
     totalMAE = 0;  % To keep track of the total MAE across all blocks
-    predictedMV = [0,0];
     
     % Process blocks in raster order (left to right, top to bottom)
     for row = 1:blockSize:height
+        predictedMV = [0,0];
         for col = 1:blockSize:width
             % Extract the current block from the current frame
             currentBlock = currentFrame(row:row+blockSize-1, col:col+blockSize-1);
