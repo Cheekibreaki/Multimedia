@@ -12,7 +12,7 @@ height = 288;                    % Frame height
 numFrames = 20;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
 j = 4;
-VBSEnable = false;
+VBSEnable = true;
 FMEEnable = false;
 FastME = false;
 

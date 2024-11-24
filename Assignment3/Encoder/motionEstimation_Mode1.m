@@ -1,4 +1,4 @@
-function [motionVectors, avgMAE] = motionEstimationBlockParallel(currentFrame, originalReferenceFrames,interpolatedReferenceFrames, blockSize, searchRange, FMEEnable, FastME)
+function [motionVectors, avgMAE] = motionEstimation_Mode1(currentFrame, originalReferenceFrames,interpolatedReferenceFrames, blockSize, searchRange, FMEEnable, FastME)
     % Motion Estimation function that processes blocks in raster order.
     % Calls findBestMatch to find the best matching block in the reference frame.
     %
@@ -95,8 +95,18 @@ function [motionVectors, avgMAE] = motionEstimationBlockParallel(currentFrame, o
  % Reshape motion vectors back to 2D
     motionVectors = reshape(motionVectors1D, numBlocksY, numBlocksX, 3);
 
-    % Calculate average MAE
-    avgMAE = mean(maeValues);
+        % Combine results back into motionVectors and vbs_matrix
+    for idx = 1:numBlocks
+       
+        blockY = ceil(idx / numBlocksX);
+        blockX = mod(idx -1,numBlocksX) + 1;
+
+        motionVectors(blockY, blockX, :) = squeeze(motionVectors1D(idx, :, :, :));
+
+    end
+
+     % Calculate the average MAE across all blocks
+    avgMAE = sum(maeValues) / numBlocks;
 
 end
 

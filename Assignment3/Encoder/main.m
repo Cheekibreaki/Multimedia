@@ -13,7 +13,7 @@ numFrames = 10;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 4;
 j = 4;
-VBSEnable = true;
+VBSEnable = false;
 FMEEnable = false;
 FastME = false;
 mode = 1;
@@ -53,11 +53,15 @@ dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
 
 [paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
 
+coreCount = 2;
+% Start parallel pool
+parpool(coreCount);
+    
 %  encoder
 if mode == 1
-encoder_mode1(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,mode);
+    encoder_mode1(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,mode);
 else
-encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,mode);
+    encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,mode);
 end
 [total_byte,bytes_list] = decoder(decodedFile,mode);
 % decoder
@@ -67,7 +71,8 @@ end
 % 
 % calculatePSNR(decodedFile, paddedOutputFile, width, height, numFrames)
 
-
+% Delete the parallel pool
+    delete(gcp('nocreate'));
 
 %All the graph for report:
 %generate_rd_analysis();

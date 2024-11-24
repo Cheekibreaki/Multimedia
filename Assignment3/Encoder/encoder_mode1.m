@@ -64,7 +64,7 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
                 [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode1(currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
                 MDiffMV = currMotionVectors;
             else
-                [currMotionVectors, avgMAE] = motionEstimation(currentFrame, validRefFrames,validInterpolatedRefFrames, blockSize, searchRange,FMEEnable, FastME);
+                [currMotionVectors, avgMAE] = motionEstimation_Mode1(currentFrame, validRefFrames,validInterpolatedRefFrames, blockSize, searchRange,FMEEnable, FastME);
                 %diff encoding is disabled
                 MDiffMV = currMotionVectors;
             end
