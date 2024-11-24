@@ -50,7 +50,7 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode1(current
                                         colOffset:colOffset + currentBlockSize - 1);
 
             % Compute motion estimation for large block and split blocks
-            
+            % Since diff encoding is disabled, previous motion vector would always be 0
             [motionVector_block_large, total_minMAE_large] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, zeros(1, 1, 3), true, FMEEnable, FastME);
             [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, zeros(1, 1, 3),  false, FMEEnable, FastME);
             
@@ -226,8 +226,7 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
     % Split current block into 4 pieces and find the best match for each
     motionVector_block = zeros(2, 2, 3);
     subBlockSize = currentBlockSize / 2;
-    predictedMV_new = reshape(predictedMV(:,:,1:2), 1, 2); % Explicitly reshape to 1x2
-    predictedMV = predictedMV_new;
+    
     if FMEEnable
         referenceFrames = interpolatedReferenceFrames;
     else
@@ -238,6 +237,7 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
         % Check all reference frames to find the best match
         for refIdx = 1:length(referenceFrames)
             referenceFrame = referenceFrames{refIdx};
+            predictedMV = [0,0];
             if FMEEnable
                 if FastME
                 % If fast ME is enabled
@@ -301,7 +301,7 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
                 % Check all reference frames to find the best match for the sub-block
                 for refIdx = 1:length(referenceFrames)
                     referenceFrame = referenceFrames{refIdx};
-                    
+                    predictedMV = [0,0];
                     % Find the best match for the sub-block within the current reference frame
                     if FMEEnable
                         if FastME

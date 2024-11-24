@@ -49,6 +49,7 @@ function [motionVectors, avgMAE] = motionEstimation_Mode1(currentFrame, original
                 if FMEEnable
                     if FastME
                     % If fast ME is enabled
+                    % Since diff encoding is disabled, previous vector is always [0,0]
                         [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, row, col, blockSize, searchRange, [0,0]);
                     else
                     % If fast ME is NOT enabled
@@ -58,6 +59,7 @@ function [motionVectors, avgMAE] = motionEstimation_Mode1(currentFrame, original
                 % If fractional ME is NOT enabled
                     if FastME
                     % If fast ME is enabled
+                    % Since diff encoding is disabled, previous vector is always [0,0]
                         [vector, mae, L1Norm] = findBestMatchFast(currentBlock, referenceFrame, row, col, blockSize, searchRange, [0,0]);
                     else
                     % If fast ME is NOT enabled

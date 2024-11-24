@@ -123,7 +123,7 @@ function [total_bytes,bytes_list] = decoder(filename,mode)
             interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
              
            % Save the P-frame with overlays as an image
-            %saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx);
+            % saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx);
             
             % if VBSEnable
             %     vbsVisualization(isIFrame,reconstructedFrame, vbs_matrix, blockSize, frameIdx, motionVectors,[]);

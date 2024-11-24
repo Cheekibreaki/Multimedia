@@ -100,8 +100,11 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             validInterpolatedRefFrames = interpolatedReferenceFrames(1:min(pFrameCounter + 1, nRefFrames));
             % Motion estimation
             if VBSEnable
-                
-                [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
+                if mode == 2
+                    [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode2(currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
+                else
+                    [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
+                end
                 MDiffMV = currMotionVectors;
             else
                 if mode == 2

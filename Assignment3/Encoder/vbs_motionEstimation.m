@@ -110,11 +110,11 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             
             
 
-            R_large = total_bits_large/total_bits_large+total_bits_split;
-            R_split = total_bits_split/total_bits_large+total_bits_split;
+            R_large = total_bits_large/(total_bits_large+total_bits_split);
+            R_split = total_bits_split/(total_bits_large+total_bits_split);
         
-            D_large = SAD_large/SAD_split+SAD_large;
-            D_split = SAD_split/SAD_split+SAD_large;
+            D_large = SAD_large/(SAD_split+SAD_large);
+            D_split = SAD_split/(SAD_split+SAD_large);
 
             % Calculate RD cost
             J_large = D_large + lambda * R_large;
@@ -334,5 +334,4 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
         total_minMAE = total_minMAE/4;
     end
 end
-
 

@@ -16,7 +16,7 @@ j = 4;
 VBSEnable = true;
 FMEEnable = false;
 FastME = false;
-mode = 2;
+mode = 0;
 
 if(VBSEnable == true)
     j = j-1;

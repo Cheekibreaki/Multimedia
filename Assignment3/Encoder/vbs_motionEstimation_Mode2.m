@@ -1,4 +1,4 @@
-function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize,QP,lambda,FMEEnable, FastME)
+function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode2(currentFrame,originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize,QP,lambda,FMEEnable, FastME)
     % Motion Estimation function that processes blocks in raster order.
     % Calls findBestMatch to find the best matching block in the reference frame.
     %
@@ -27,13 +27,11 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
 
     spmd(2)
 
-            localPredictedFrame = zeros(size(currentFrame), 'double');
-            localReconstructedFrame = zeros(size(currentFrame), 'double');
-            localResidualFrame = zeros(size(currentFrame), 'double');
-            localPredictionModes = int32(zeros(numBlocksY, numBlocksX));
+             % Local storage for results
+            localMotionVectors = zeros(numBlocksY, numBlocksX, 3);
             localVBSMatrix = -1 * ones(numBlocksY, numBlocksX);
-            
-            
+            localTotalMAE = 0;
+                
              if spmdIndex == 1
                 % Worker 1 processes odd rows 
                 rowStart = 1;
@@ -160,25 +158,29 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
                     end
         
                     % Store the motion vectors in the corresponding positions
-                    motionVectors(blockY:blockY+1, blockX:blockX+1, :) = motionVector_block;
+                    localMotionVectors(blockY:blockY+1, blockX:blockX+1, :) = motionVector_block;
         
                     % Update the total MAE
-                    totalMAE = totalMAE + total_minMAE;
+                    localTotalMAE = localTotalMAE + total_minMAE;
                 end
             end
     end
 
     % Combine results back into motionVectors and vbs_matrix
-    for idx = 1:totalBlocks
-        blockY = 2 * floor((idx - 1) / (numBlocksX / 2)) + 1;
-        blockX = 2 * mod((idx - 1), (numBlocksX / 2)) + 1;
-
-        motionVectors(blockY:blockY + 1, blockX:blockX + 1, :) = squeeze(motionVectorBlocks(idx, :, :, :));
-        vbs_matrix(blockY:blockY + 1, blockX:blockX + 1) = vbsMatrixBlocks(idx, :, :);
+    for bigBlockY = 1:bigBlockYnum
+         if mod(bigBlockY, 2) == 1
+            % first worker
+            vbs_matrix(2*bigBlockY-1:2*bigBlockY, :) = localVBSMatrix{1}(2*bigBlockY-1:2*bigBlockY, :);
+            motionVectors(2*bigBlockY-1:2*bigBlockY, :) = localMotionVectors{1}(2*bigBlockY-1:2*bigBlockY, :);
+         else
+            % second worker
+            vbs_matrix(2*bigBlockY-1:2*bigBlockY, :) = localVBSMatrix{2}(2*bigBlockY-1:2*bigBlockY, :);
+            motionVectors(2*bigBlockY-1:2*bigBlockY, :) = localMotionVectors{2}(2*bigBlockY-1:2*bigBlockY, :);
+         end
     end
 
     % Calculate the average MAE across all blocks
-    avgMAE = sum(totalMAE) / totalBlocks;
+    avgMAE = (localTotalMAE{1} + localTotalMAE{2}) / (bigBlockXnum * bigBlockYnum);
     
 end
 
