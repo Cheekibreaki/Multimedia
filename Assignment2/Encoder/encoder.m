@@ -1,4 +1,4 @@
-function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable,FMEEnable,FastME)
+function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable,FMEEnable,FastME,RCflag,per_block_row_budget,bitCountPerRow)
     % encoderEx3: This function performs motion estimation and motion 
     % compensation to encode a video sequence. It also visualizes the 
     % residuals before and after motion compensation for each frame.
@@ -113,10 +113,10 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         if isIFrame
            if VBSEnable
                quantizedResiduals = residualFrame;
-                [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
+                [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, RCflag,per_block_row_budget, bitCountPerRow,vbs_matrix);
            else
-               quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-               [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
+          
+               [nonimporatant1,encodedMDiff,encodedResidues,quantizedResiduals] = quantization_entropy(isIFrame, [], MDiffModes, Residuals, RCflag,per_block_row_budget, bitCountPerRow,dct_blockSize,width,height,QP);
            end
 
             save(sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx), 'encodedMDiff');
@@ -135,11 +135,11 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         else
 
             if VBSEnable
-                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
+                 
+                [encodedMDiff,nonimporatant1,encodedResidues,quantizedResiduals] = quantization_entropy(isIFrame, MDiffMV, [], Residuals, RCflag,per_block_row_budget, bitCountPerRow,dct_blockSize,width,height,QP,vbs_matrix);
             else
-                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
+               
+                [encodedMDiff,nonimporatant1,encodedResidues,quantizedResiduals] = quantization_entropy(isIFrame, MDiffMV, [], Residuals, RCflag,per_block_row_budget, bitCountPerRow,dct_blockSize,width,height,QP);
             end
 
             motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);

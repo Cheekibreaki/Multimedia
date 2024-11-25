@@ -1,4 +1,4 @@
-function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyEncode(frame_type, motionVector3d, predicitonModes2d, residues2d,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
+function [encodedMotionVector,encodedPredicitonModes,encodedResidues,quantizedResidues] = quantization_entropy(frame_type, motionVector3d, predicitonModes2d,residuals, RCflag,per_block_row_budget, bitCountPerRow,dct_blockSize,width,height,baseQP, vbs_matrix)
     % Input:
     % frame_type: 1 for I-frame, 0 for P-frame 
     % pred_diff: array containing differential prediction information (modes for intra or motion vectors for inter)
@@ -7,7 +7,6 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
 
     % Frame Type Marker. Create the header to store frame type 
     frameTypeHeader = frame_type;  % 1 for I-frame, 0 for P-frame
-
     encodedMotionVector = [];
     encodedPredicitonModes = [];
     encodedResidues = [];
@@ -108,10 +107,89 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
             encodedPredicitonModes = exp_golomb_encode(predicitonModes1d); 
         end
     end
-
+    if(RCflag == false) 
+        residues2d = zeros(size(residuals));
+        for row = 1:dct_blockSize:height
+            for col = 1:dct_blockSize:width
+                block = residuals(row:row+dct_blockSize-1, col:col+dct_blockSize-1);
+                dctBlock = dct2(double(block));
+        
+                % Quantization
+                % QP = adaptiveQP(dct_blockSize, baseQP);
+                Q = createQMatrix(size(block), baseQP);
+                quantizedBlock = round(dctBlock ./ Q);
+                residues2d(row:row+dct_blockSize-1, col:col+dct_blockSize-1) = quantizedBlock;
+            end
+        end
+        quantizedResidues = residues2d;
         residues1d = zigzag(residues2d);
         residuesRLE = rle_encode(residues1d); 
         encodedResidues = exp_golomb_encode(residuesRLE);
+    else
+        final_encodedResidues = [];
+        % Define maximum QP to prevent infinite loops
+        maxQP = 10;  % Maximum QP value (standard range is 0 to 51)
+        % Initialize a matrix to store quantized residues for reconstruction
+        quantizedResidues = zeros(size(residuals));
+        % Loop over the image in block rows
+        for row = 1:dct_blockSize:height
+            curr_per_block_row_budget = per_block_row_budget;
+            % Loop over the blocks in the current block row
+            for col = 1:dct_blockSize:width
+                % Extract the current block
+                block_row_end = min(row + dct_blockSize - 1, height);
+                block_col_end = min(col + dct_blockSize -1, width);
+                block = residuals(row:block_row_end, col:block_col_end);
+                dctBlock = dct2(double(block));
+    
+                % Initialize QP with baseQP
+                QP = baseQP;
+                % Initialize variables
+                encodedResidues = [];
+                bits_used = 0;
+                % Rate Control Loop: Adjust QP to meet the per-block row budget
+                
+                % Quantization with current QP
+                Q = createQMatrix(size(block), QP);
+                quantizedBlock = round(dctBlock ./ Q);
+
+                % Encode the quantized block
+                % Flatten the quantized block using zigzag scan
+                quantizedBlock1d = zigzag(quantizedBlock);
+                residuesRLE = rle_encode(quantizedBlock1d); 
+                encodedResidues = exp_golomb_encode(residuesRLE);
+
+                % Calculate bits used by this block
+                bits_used = length(encodedResidues);
+
+                % Check if bits used exceeds the remaining budget
+                if bits_used <= curr_per_block_row_budget
+                    % Sufficient budget; proceed with this QP
+                    break;
+                else
+                    % Insufficient budget; increase QP to reduce bits
+                        warning('Reached maximum QP at position (%d, %d); meet bit budget.', row, col);
+                        break;
+                    end
+                end
+                
+                % Update the remaining budget for the current block row
+                curr_per_block_row_budget = curr_per_block_row_budget - bits_used;
+    
+                % Append QP and encoded residues to the final output
+                final_encodedResidues = [final_encodedResidues, QP, encodedResidues];
+    
+                % Store the quantized block for reconstruction
+                quantizedResidues(row:block_row_end, col:block_col_end) = quantizedBlock;
+    
+                % Optionally, print the size of the encoded residues for debugging
+                fprintf('Block at (%d, %d): QP=%d, Bits Used=%d, Remaining Budget=%d\n', ...
+                        row, col, QP, bits_used, curr_per_block_row_budget);
+            end
+        end
+        % Assign the final encoded residues to the output variable
+        encodedResidues = final_encodedResidues;
+    end
 
     % Prepend the frame type to the encoded data (as a header)
     encodedPredicitonModes = [frameTypeHeader, encodedPredicitonModes];
@@ -143,23 +221,7 @@ function zigzag_order = zigzag(matrix)
     end
 end
 
-% function encoded = exp_golomb_encode(data)
-%     % Encode data using Exponential-Golomb coding based on specific rules
-%     % and return a 1D cell array of binary strings
-%     encoded = cell(1, length(data));  % Initialize a cell array to store binary strings
-%     for i = 1:length(data)
-%         x = data(i);
-%         if x > 0
-%             value = 2 * x;  % Positive x to odd integer (2x-1)
-%         else
-%             value = (-2 * x)+1;     % Non-positive x to even integer (-2x)
-%         end
-%         bin_code = dec2bin(value);  % Convert to binary
-%         leading_zeros = floor(log2(value)) + 1;  % Compute the number of leading zeros
-%         code = [repmat('0', 1, leading_zeros - 1), '1', bin_code(2:end)];  % Assemble the code
-%         encoded{i} = code;  % Store binary code in cell array
-%     end
-% end
+
 
 
 function encoded = exp_golomb_encode(data)
@@ -250,6 +312,42 @@ function encoded = rle_encode(data)
 end
 
 
-% testdata = [-31, 9, -4, 8, 1, -3, 4, 4, 2, 4, 0, 4, 0, 0, -4, 0, 0, 1, 0, 0]
-% encoded = rle_encode(testdata)
-% decoded = rle_decode(encoded,20)
+function QP = findCorrectQP(per_block_row_budget, bitCountPerRow)
+    % Iterate through the bitCountPerRow array
+    for idx = 1:(length(bitCountPerRow))
+        % Check if the budget falls within the current range
+        if idx == length(bitCountPerRow)
+            QP = idx - 1;
+            return;
+        end
+        if per_block_row_budget >= bitCountPerRow(idx) && per_block_row_budget < bitCountPerRow(idx + 1)
+            QP = idx - 1; % Return the corresponding QP value (adjust for 0-based indexing)
+            return;
+        end
+    end
+    % If no match is found, return -1 or an error message
+    QP = -1; % Indicates that no valid QP was found
+end
+
+function Q = createQMatrix(blockSize, QP)
+    if numel(blockSize) > 1
+        rows = blockSize(1);
+        cols = blockSize(2);
+    else
+        rows = blockSize;
+        cols = blockSize;
+    end
+    
+    Q = zeros(rows, cols);
+    for x = 1:rows
+        for y = 1:cols
+            if (x + y <= rows)
+                Q(x,y) = 2^QP;
+            elseif (x + y == rows + 1)
+                Q(x,y) = 2^(QP+1);
+            else
+                Q(x,y) = 2^(QP+2);
+            end
+        end
+    end
+end

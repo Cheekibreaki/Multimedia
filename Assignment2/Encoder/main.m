@@ -12,10 +12,12 @@ height = 288;                    % Frame height
 numFrames = 10;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 4;
-j = 4;
+j = 2;
 VBSEnable = true;
 FMEEnable = false;
 FastME = false;
+RCflag = false;
+
 
 if(VBSEnable == true)
     j = j-1;
@@ -26,6 +28,10 @@ dct_blockSize = 2^j;
 I_Period = 8; 
 nRefFrames = 4;                 % Can take value from 1 to 4
 
+targetBR = 1140480;
+fps = 30;
+
+bitCountPerRow = [2112, 1936, 1760, 1584, 1408, 1232, 1056, 880, 704, 528];
 function lambda = get_lambda_for_qp(QP)
    if QP == 1
             lambda = 0.02;
@@ -50,11 +56,23 @@ QPs = [1,2,4,7,10];
 
 dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
 
+
+
 [paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
 
+
+per_block_row_budget = 0;
+if RCflag == true
+    per_block_row_budget = get_per_row_budget(targetBR,fps,paddedWidth,paddedHeight,blockSize);
+end
 % % encoder
-encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME );
+encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,RCflag,per_block_row_budget,bitCountPerRow );
 [total_byte,bytes_list] = decoder(decodedFile);
+
+
+
+
+
 % %decoder
 % compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
 % 
