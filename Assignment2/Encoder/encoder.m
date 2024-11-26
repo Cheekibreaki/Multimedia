@@ -135,7 +135,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         else
 
             if VBSEnable
-                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
+                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
                 [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
             else
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
@@ -154,9 +154,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         
         compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
         if VBSEnable
-            if isIFrame
                 compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
-            end
         end
 
         reconstructedFrame = double(predictedFrame) + double(compresiduals);

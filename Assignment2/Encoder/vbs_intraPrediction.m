@@ -151,7 +151,7 @@ function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPr
         if subBlockY <= numBlocksY && subBlockX <= numBlocksX
             [qResidual, aReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame,approximatedresidualFrame] = ...
                 processBlock(currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
-                subBlockY, subBlockX, rowOffsetSub, colOffsetSub, blockSize, dct_blockSize, baseQP, mode, isLarge);
+                subBlockY, subBlockX, rowOffsetSub, colOffsetSub, blockSize, dct_blockSize, baseQP -1, mode, isLarge);
 
             % Place the sub-blocks into the combined block
             actualSubBlockHeight = size(aReconstructedBlock, 1);

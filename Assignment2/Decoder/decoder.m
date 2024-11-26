@@ -115,9 +115,11 @@ function [total_bytes,bytes_list] = decoder(filename)
             % Perform motion compensation to get the predicted frame
             predictedFrame = motionCompensation(referenceFrames,interpolatedReferenceFrames, motionVectors, blockSize, width, height, FMEEnable);
             
-
-            compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
-
+            if VBSEnable
+                compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
+            else
+                compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
+            end
             % Add the approximated residuals to the predicted frame to reconstruct
             reconstructedFrame = double(predictedFrame) + double(compresiduals);
             interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);

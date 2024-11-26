@@ -9,7 +9,7 @@ referenceFile = '../Outputs/referenceFrames.yuv';
 decodedFile = '../Outputs/decoded_Y_foreman.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
-numFrames = 10;                 % Number of frames to process
+numFrames = 4;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 4;
 j = 4;
@@ -56,7 +56,7 @@ dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
 encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME );
 [total_byte,bytes_list] = decoder(decodedFile);
 % %decoder
-% compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
+compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
 % 
 % 
 % 

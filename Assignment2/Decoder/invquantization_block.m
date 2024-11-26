@@ -49,7 +49,7 @@ function [reconstructedResiduals] = invquantization_block(quantizedResiduals, dc
                         quantizedSubBlock = quantizedResiduals(subRowOffset:subRowOffset+actualSubBlockHeight-1, subColOffset:subColOffset+actualSubBlockWidth-1);
                         
                         % Create the quantization matrix
-                        Q = createQMatrix(size(quantizedSubBlock), baseQP);
+                        Q = createQMatrix(size(quantizedSubBlock), baseQP-1);
                         
                         % Inverse quantization (element-wise multiplication)
                         dequantizedSubBlock = quantizedSubBlock .* Q;
