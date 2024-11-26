@@ -1,5 +1,69 @@
+function test_quantization_consistency()
+    % Parameters
+    dct_blockSize = 8;
+    width = 16;
+    height = 16;
+    baseQP = 5;
+
+    % Generate synthetic residuals
+    residuals = randi([-255, 255], height, width);
+
+    % Case 1: Quantization without vbs_matrix
+    quantizedResiduals_no_vbs = quantization(residuals, dct_blockSize, width, height, baseQP-1);
+
+    % Case 2: Quantization with vbs_matrix filled with ones
+    vbs_matrix_rows = height / dct_blockSize;
+    vbs_matrix_cols = width / dct_blockSize;
+    vbs_matrix = ones(vbs_matrix_rows, vbs_matrix_cols);
+
+    % Modify the quantization function to use baseQP for sub-blocks
+    % (Assuming you have updated the function accordingly)
+
+    quantizedResiduals_with_vbs = quantization(residuals, dct_blockSize, width, height, baseQP, vbs_matrix);
+
+    % Compare the outputs
+    difference = quantizedResiduals_no_vbs - quantizedResiduals_with_vbs;
+    max_difference = max(abs(difference(:)));
+
+    % Display the results
+    if max_difference == 0
+        disp('The quantized residuals are identical for both cases.');
+    else
+        disp('The quantized residuals differ between the two cases.');
+        fprintf('Maximum absolute difference: %d\n', max_difference);
+    end
+end
 
 
+test_quantization_consistency()
+
+
+
+
+
+
+function Q = createQMatrix(blockSize, QP)
+    if numel(blockSize) > 1
+        rows = blockSize(1);
+        cols = blockSize(2);
+    else
+        rows = blockSize;
+        cols = blockSize;
+    end
+
+    Q = zeros(rows, cols);
+    for x = 1:rows
+        for y = 1:cols
+            if (x + y <= rows)
+                Q(x,y) = 2^QP;
+            elseif (x + y == rows + 1)
+                Q(x,y) = 2^(QP+1);
+            else
+                Q(x,y) = 2^(QP+2);
+            end
+        end
+    end
+end
 
 
 function [quantizedResiduals] = quantization(residuals, dct_blockSize, width, height, baseQP, vbs_matrix)
@@ -23,7 +87,7 @@ function [quantizedResiduals] = quantization(residuals, dct_blockSize, width, he
             actualBlockWidth = min(2 * dct_blockSize, width - colOffset + 1);
 
             % Check if the vbs_block is all ones or contains zeros
-            if all(vbs_block(:) == 1)
+            if all(vbs_block(:) == 0)
                 % Process as a large block
                 % Extract the residual block
                 block = residuals(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1);
@@ -89,32 +153,6 @@ function [quantizedResiduals] = quantization(residuals, dct_blockSize, width, he
         end
     end
 end
-
-function Q = createQMatrix(blockSize, QP)
-    if numel(blockSize) > 1
-        rows = blockSize(1);
-        cols = blockSize(2);
-    else
-        rows = blockSize;
-        cols = blockSize;
-    end
-
-    Q = zeros(rows, cols);
-    for x = 1:rows
-        for y = 1:cols
-            if (x + y <= rows)
-                Q(x,y) = 2^QP;
-            elseif (x + y == rows + 1)
-                Q(x,y) = 2^(QP+1);
-            else
-                Q(x,y) = 2^(QP+2);
-            end
-        end
-    end
-end
-
-
-
 
 
 
