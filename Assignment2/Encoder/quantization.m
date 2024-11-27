@@ -23,7 +23,7 @@ function [quantizedResiduals] = quantization(residuals, dct_blockSize, width, he
             actualBlockWidth = min(2 * dct_blockSize, width - colOffset + 1);
 
             % Check if the vbs_block is all ones or contains zeros
-            if all(vbs_block(:) == 1)
+            if all(vbs_block(:) == 0)
                 % Process as a large block
                 % Extract the residual block
                 block = residuals(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1);
