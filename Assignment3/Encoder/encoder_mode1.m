@@ -78,7 +78,7 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
 
 
             if VBSEnable
-                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
+                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
                 [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
             else
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
@@ -90,22 +90,23 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
             residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
             save(residualFile, 'encodedResidues');
 
-
-
-        % Reconstruct the frame at the encoder side to create a closed loop 
-        % Use it as the reference frame for the next frame
-
-        compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
-        reconstructedFrame = double(predictedFrame) + double(compresiduals);
-        reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
-        interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
-
-        fwrite(yuvFile, reconstructedFrame', 'uint8');
-
-        % Update the reference frames using a sliding window
-        referenceFrames = [{reconstructedFrame}, referenceFrames(1:nRefFrames - 1)];
-        interpolatedReferenceFrames = [{interpolatedReconstructedFrame}, interpolatedReferenceFrames(1:nRefFrames - 1)];
-        fprintf('Processed frame %d\n', frameIdx);
+            % Reconstruct the frame at the encoder side to create a closed loop 
+            % Use it as the reference frame for the next frame
+    
+            compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
+            if VBSEnable
+                compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
+            end
+            reconstructedFrame = double(predictedFrame) + double(compresiduals);
+            reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
+            interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
+    
+            fwrite(yuvFile, reconstructedFrame', 'uint8');
+    
+            % Update the reference frames using a sliding window
+            referenceFrames = [{reconstructedFrame}, referenceFrames(1:nRefFrames - 1)];
+            interpolatedReferenceFrames = [{interpolatedReconstructedFrame}, interpolatedReferenceFrames(1:nRefFrames - 1)];
+            fprintf('Processed frame %d\n', frameIdx);
 
 
     end

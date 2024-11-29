@@ -83,8 +83,10 @@ parpool(coreCount);
             tic;
                 
             if configs(c).mode == 1
+                %for mode 1 
                 encoder_mode1(referenceFile, paddedOutputFile, numFrames, paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames, lambdas(qp_idx), VBSEnable, FMEEnable, FastME, configs(c).mode);
             else
+                %for mode 0 and mode 2
                 encoder(referenceFile, paddedOutputFile, numFrames, paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames, lambdas(qp_idx), VBSEnable, FMEEnable, FastME,configs(c).mode);
             end
             % Run decoder

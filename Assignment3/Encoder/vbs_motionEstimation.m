@@ -1,25 +1,11 @@
 function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize,QP,lambda,FMEEnable, FastME)
-    % Motion Estimation function that processes blocks in raster order.
-    % Calls findBestMatch to find the best matching block in the reference frame.
-    %
-    % Parameters:
-    %   currentFrame - The Y component of the current frame (grayscale image)
-    %   referenceFrames - The Y component of the reference frames (grayscale images)
-    %   blockSize - The size of the blocks (e.g., 8x8)
-    %   searchRange - The maximum number of pixels to search in any direction for motion
-    %   VBS_matrix - Matrix containing the VBS information (2 for single large block, 1 for four sub-blocks)
-    %
-    % Returns:
-    %   motionVectors - An array of motion vectors for each block
-    %   avgMAE - The average Mean Absolute Error for the entire frame
-
     % Get the dimensions of the frame
-    [height, width] = size(currentFrame); % Example: 288x352
+      [height, width] = size(currentFrame);
 
-    % Initialize the motion vector array (for storing motion vectors for each block)
+    % Initialize the motion vector array and VBS matrix
     numBlocksX = width / blockSize;
     numBlocksY = height / blockSize;
-    motionVectors = zeros(numBlocksY, numBlocksX, 3);  % Stores motion vector for each block.
+    motionVectors = zeros(numBlocksY, numBlocksX, 3);  % Stores motion vectors for each block.
     vbs_matrix = -1 * ones(numBlocksY, numBlocksX);
     totalMAE = 0;  % To keep track of the total MAE across all blocks
 
@@ -31,6 +17,7 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             else
                 referenceFrames = originalReferenceFrames;
             end
+            
             % Single large block: size is 2 * blockSize (i.e., twice the size in both dimensions)
             currentBlockSize = blockSize * 2;
             rowOffset = (blockY - 1) * blockSize + 1;
@@ -43,84 +30,67 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             % Compute motion estimation for large block and split blocks
             
             [motionVector_block_large, total_minMAE_large] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block, true, FMEEnable, FastME);
-            [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block,  false, FMEEnable, FastME);
+            [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block, false, FMEEnable, FastME);
             
-            
+            % Compute predicted frames for large and split blocks
             predictedFrame_block_large = compute_predictedFrame_block(referenceFrames, motionVector_block_large, rowOffset, colOffset, blockSize);
             predictedFrame_block_split = compute_predictedFrame_block(referenceFrames, motionVector_block_split, rowOffset, colOffset, blockSize);
             
+            % Compute residuals
             Residuals_block_large = double(currentBlock) - double(predictedFrame_block_large);
             Residuals_block_split = double(currentBlock) - double(predictedFrame_block_split);
 
-            quantizedResiduals_large = quantization(Residuals_block_large, dct_blockSize,currentBlockSize,currentBlockSize,QP);
+            % Construct vbs_matrix for large block (all zeros indicating large blocks)
+            vbs_matrix_large = zeros(currentBlockSize / dct_blockSize, currentBlockSize / dct_blockSize);
             
-             % Split the 16x16 residue into four 8x8 blocks
-            blockSizeSmall = blockSize; % blockSize here is 8
-            Residuals_split_1 = Residuals_block_split(1:blockSizeSmall, 1:blockSizeSmall);
-            Residuals_split_2 = Residuals_block_split(1:blockSizeSmall, blockSizeSmall+1:end);
-            Residuals_split_3 = Residuals_block_split(blockSizeSmall+1:end, 1:blockSizeSmall);
-            Residuals_split_4 = Residuals_block_split(blockSizeSmall+1:end, blockSizeSmall+1:end);
+             % Quantize residuals using vbs_matrix for large block
+            quantizedResiduals_large = quantization(Residuals_block_large, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_large);
 
-            % Quantize each of the four 8x8 blocks separately
-            quantizedResiduals_1 = quantization(Residuals_split_1, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-            quantizedResiduals_2 = quantization(Residuals_split_2, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-            quantizedResiduals_3 = quantization(Residuals_split_3, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-            quantizedResiduals_4 = quantization(Residuals_split_4, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
+             % Construct vbs_matrix for split blocks (all ones indicating small blocks)
+            vbs_matrix_split = ones(currentBlockSize / dct_blockSize, currentBlockSize / dct_blockSize);
 
-            % Combine the quantized 8x8 blocks back into a 16x16 block
-            quantizedResiduals_split = [quantizedResiduals_1, quantizedResiduals_2;
-                                       quantizedResiduals_3, quantizedResiduals_4];
+             % Quantize residuals using vbs_matrix for split blocks
+            quantizedResiduals_split = quantization(Residuals_block_split, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_split);
 
+             % Inverse quantization
+            compresiduals_large = invquantization_block(quantizedResiduals_large, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_large);
+            compresiduals_split = invquantization_block(quantizedResiduals_split, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_split);
 
-            compresiduals_large = invquantization(quantizedResiduals_large, dct_blockSize,currentBlockSize,currentBlockSize,QP);
-
-            
-            % Compute the inverse quantized residuals for the split blocks
-            compresiduals_1 = invquantization(quantizedResiduals_1, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-            compresiduals_2 = invquantization(quantizedResiduals_2, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-            compresiduals_3 = invquantization(quantizedResiduals_3, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-            compresiduals_4 = invquantization(quantizedResiduals_4, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-
-            % Combine the inverse quantized 8x8 blocks back into a 16x16 block
-            compresiduals_split = [compresiduals_1, compresiduals_2;
-                                   compresiduals_3, compresiduals_4];
-
-            
-            reconstructed_split = predictedFrame_block_split + compresiduals_split;
+            % Reconstruct frames
             reconstructed_large = predictedFrame_block_large + compresiduals_large;
-            
-            
+            reconstructed_split = predictedFrame_block_split + compresiduals_split;
 
-            % Compute SAD for reconstructed_split
+             % Compute SAD (Sum of Absolute Differences)
+            SAD_large = sum(sum(abs(double(currentBlock) - double(reconstructed_large))));
             SAD_split = sum(sum(abs(double(currentBlock) - double(reconstructed_split))));
             
-            % Compute SAD for reconstructed_large
-            SAD_large = sum(sum(abs(double(currentBlock) - double(reconstructed_large))));
+            % Differential encoding for motion vectors
+            [MDiffMV_large, previous_motion_vector_block_large] = diffEncoding_block(motionVector_block_large, 'mv', previous_motion_vector_block);
+            [MDiffMV_split, previous_motion_vector_block_split] = diffEncoding_block(motionVector_block_split, 'mv', previous_motion_vector_block);
             
-            [MDiffMV_large,previous_motion_vector_block_large] = diffEncoding_block(motionVector_block_large,'mv',previous_motion_vector_block);
-            [MDiffMV_split,previous_motion_vector_block_split] = diffEncoding_block(motionVector_block_split,'mv',previous_motion_vector_block);
-
-            [encodedMDiff_large,nonimporatant1,encodedResidues_large] = entropyEncode(false, MDiffMV_large, [], quantizedResiduals_large);
-            [encodedMDiff_split,nonimporatant1,encodedResidues_split] = entropyEncode(false, MDiffMV_split, [], quantizedResiduals_split);
-            
+            % Entropy encoding
+            [encodedMDiff_large, ~, encodedResidues_large] = entropyEncode(false, MDiffMV_large, [], quantizedResiduals_large);
+            [encodedMDiff_split, ~, encodedResidues_split] = entropyEncode(false, MDiffMV_split, [], quantizedResiduals_split);
            
             % Calculate rate (R) for large and split blocks
             total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);
             total_bits_split = numel(encodedMDiff_split) + numel(encodedResidues_split);
             
+            total_bits = total_bits_large + total_bits_split;  % Total bits for normalization
+           
+            R_large = total_bits_large / total_bits;
+            R_split = total_bits_split / total_bits;
             
-
-            R_large = total_bits_large/(total_bits_large+total_bits_split);
-            R_split = total_bits_split/(total_bits_large+total_bits_split);
-        
-            D_large = SAD_large/(SAD_split+SAD_large);
-            D_split = SAD_split/(SAD_split+SAD_large);
+            % Normalize SAD for distortion (D)
+            total_SAD = SAD_large + SAD_split;
+            D_large = SAD_large / total_SAD;
+            D_split = SAD_split / total_SAD;
 
             % Calculate RD cost
             J_large = D_large + lambda * R_large;
             J_split = D_split + lambda * R_split;
             
-            % Choose the motion vector block with the lower MAE
+            % Choose the motion vector block with the lower RD cose
             if J_large < J_split
                 motionVector_block = motionVector_block_large;
                 total_minMAE = total_minMAE_large;
@@ -142,7 +112,7 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
     end
 
     % Calculate the average MAE across all blocks
-    avgMAE = totalMAE / (numBlocksX * numBlocksY /4);
+    avgMAE = totalMAE / (numBlocksX * numBlocksY / 4);
 end
 
 

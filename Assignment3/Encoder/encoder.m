@@ -128,8 +128,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         if isIFrame
            if VBSEnable
                quantizedResiduals = residualFrame;
-               
-               [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
+                [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
            else
                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
                [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
@@ -143,7 +142,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             for i = 1:nRefFrames
                 referenceFrames{i} = 128 * ones(height, width, 'uint8');  
             end
-            
+
             for i = 1:nRefFrames
                 interpolatedReferenceFrames{i} = 128 * ones(height*2 - 1, width*2 -1, 'uint8');  
             end
@@ -151,7 +150,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         else
 
             if VBSEnable
-                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
+                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
                 [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
             else
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
@@ -170,9 +169,9 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         
         compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
         if VBSEnable
-            if isIFrame
+          
                 compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
-            end
+
         end
 
         reconstructedFrame = double(predictedFrame) + double(compresiduals);
