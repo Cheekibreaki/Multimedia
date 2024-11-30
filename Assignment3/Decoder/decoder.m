@@ -59,7 +59,7 @@ function [total_bytes,bytes_list] = decoder(filename,mode)
     for frameIdx = 1:numFrames
 
        quantizedresidualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
-       load(quantizedresidualFile, 'encodedResidues');
+       load(quantizedresidualFile, 'encodedResiduals');
        
        %extract the header of MDiff to get frame type
        MDiffFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
@@ -75,7 +75,7 @@ function [total_bytes,bytes_list] = decoder(filename,mode)
 
         if isIFrame
             pFrameCounter = 0;  % Reset the P-frame counter
-            [nonimportant1,predictionModes,quantizedResiduals,vbs_matrix] = entropyDecode(isIFrame, [], encodedMDiff, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight, VBSEnable);
+            [nonimportant1,predictionModes,quantizedResiduals,vbs_matrix] = entropyDecode(isIFrame, [], encodedMDiff, encodedResiduals, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight, VBSEnable);
            
             
             if VBSEnable
@@ -106,7 +106,7 @@ function [total_bytes,bytes_list] = decoder(filename,mode)
             % end
           
         else
-            [motionVectors,nonimportant1,quantizedResiduals,vbs_matrix] = entropyDecode(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,VBSEnable);
+            [motionVectors,nonimportant1,quantizedResiduals,vbs_matrix] = entropyDecode(isIFrame, encodedMDiff, [], encodedResiduals,mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,VBSEnable);
             % Load the motion vectors and approximated residuals for the current frame
 
             if not (VBSEnable) && not (mode == 1)

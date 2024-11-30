@@ -40,7 +40,6 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
     end
     fclose(fid);
 
-
     % if FMEEnable
     %     referenceFrame = 128 * ones(height, width, 'uint8');
     % else
@@ -207,7 +206,8 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                    end
 
                    MDiffModes = currPredictionModes;
-                  
+                   reconstructedFrame = approximatedReconstructedFrame;
+                   
                else
                
                     approximatedPredictedFrame = zeros(size(currentFrame), 'double');
@@ -278,6 +278,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                            spmdSend(approximatedReconstructedFrame, 1);
                        end    
                    end
+                   reconstructedFrame = approximatedReconstructedFrame;
                    predictedFrame = approximatedPredictedFrame;
                    MDiffModes = diffEncoding(currPredictionModes,'modes');
                    Residuals = double(currentFrame) - double(predictedFrame);
@@ -293,10 +294,12 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                end
     
                 % Store worker data for this frame
-                workerData{(frameIdx - spmdIndex + 2) / 2} = struct(...
+               workerData{(frameIdx - spmdIndex + 2) / 2} = struct(...
                     'frameIdx', frameIdx, ...
                     'encodedMDiff', encodedMDiff, ...
-                    'encodedResiduals', encodedResiduals);
+                    'encodedResiduals', encodedResiduals, ...
+                    'reconstructedFrame',reconstructedFrame);
+              
             else
     
                 % Motion estimation
@@ -443,8 +446,13 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     avgMAE = totalMAE / (numBlocksX * numBlocksY /4);
                     
                     MDiffMV = motionVectors;
-                
+                    predictedFrame = approximatedPredictedFrame;
+                    reconstructedFrame = approximatedReconstructedFrame;
+                    Residuals = double(currentFrame) - double(predictedFrame);    
                 else
+                    if spmdIndex == 1
+                        referenceFrames = {referenceFrame};
+                    end
                     approximatedReconstructedFrame(1:height,1:width) = zeros(size(currentFrame), 'double');
                     approximatedPredictedFrame = zeros(size(currentFrame), 'double');
                     % Initialize the motion vector array (for storing motion vectors for each block)
@@ -463,6 +471,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                                 if FMEEnable
                                     referenceFrame = interpolateFrame(referenceFrame);
                                 end
+                                referenceFrames = {referenceFrame};
                             end
                          end
                         for col = 1:blockSize:width
@@ -563,6 +572,8 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     % Calculate the average MAE across all blocks
                     avgMAE = totalMAE / (numBlocksX * numBlocksY);
                     MDiffMV = diffEncoding(currMotionVectors,'mv');
+                    reconstructedFrame = approximatedReconstructedFrame;
+
                     if spmdIndex == 2
                        if frameIdx ~= numFrames
                            spmdSend(approximatedReconstructedFrame, 1);
@@ -570,6 +581,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     end
                     predictedFrame = approximatedPredictedFrame;
                     Residuals = double(currentFrame) - double(predictedFrame);    
+                   
                 end
 
                 if VBSEnable
@@ -584,8 +596,9 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                 workerData{(frameIdx - spmdIndex + 2) / 2} = struct(...
                     'frameIdx', frameIdx, ...
                     'encodedMDiff', encodedMDiff, ...
-                    'encodedResiduals', encodedResiduals);
- 
+                    'encodedResiduals', encodedResiduals, ...
+                    'reconstructedFrame',reconstructedFrame);
+
             end
         end
     end
@@ -593,21 +606,40 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
     % Combine data from all workers
     allWorkerData = [workerData{1}, workerData{2}];
     
+    
+    % Extract frame indices
+    frameIndices = cellfun(@(data) data.frameIdx, allWorkerData);
+    
+    % Sort the data by frameIdx
+    [~, sortedOrder] = sort(frameIndices);
+    sortedWorkerData = allWorkerData(sortedOrder);
+    reconstructedYUVFile = fopen(referenceFile, 'w');
+    if reconstructedYUVFile == -1
+        error('Failed to open YUV file for writing reconstructed frames.');
+    end
+
     % Save data in the required format
-    for i = 1:length(allWorkerData)
-        frameData = allWorkerData{i};
+    for i = 1:length(sortedWorkerData)
+        frameData = sortedWorkerData{i};
         frameIdx = frameData.frameIdx;
     
         % Save motion vector file
         motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
-        save(motionVectorFile, 'frameData.encodedMDiff');
+        encodedMDiff = frameData.encodedMDiff;
+        save(motionVectorFile, 'encodedMDiff');
     
         % Save residuals file
         residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
-        save(residualFile, 'frameData.encodedResiduals');
-    end
-      
+        encodedResiduals = frameData.encodedResiduals;
+        save(residualFile, 'encodedResiduals');
 
+        % Save reconstructed frame to YUV file
+        reconstructedFrame = frameData.reconstructedFrame;
+        fwrite(reconstructedYUVFile, reconstructedFrame', 'uint8'); % Write in YUV format
+    end
+
+    fclose(reconstructedYUVFile);
+       
 end
 
 
