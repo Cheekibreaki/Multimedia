@@ -79,16 +79,16 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
 
             if VBSEnable
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
-                [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
+                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
             else
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
+                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
             end
 
             motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
             save(motionVectorFile, 'encodedMDiff');
             residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
-            save(residualFile, 'encodedResidues');
+            save(residualFile, 'encodedResiduals');
 
             % Reconstruct the frame at the encoder side to create a closed loop 
             % Use it as the reference frame for the next frame

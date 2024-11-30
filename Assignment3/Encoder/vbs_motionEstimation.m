@@ -1,6 +1,6 @@
-function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize,QP,lambda,FMEEnable, FastME)
+function [motionVectors, avgMAE, vbs_matrix] = vbs_motionEstimation(currentFrame, originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize, QP, lambda, FMEEnable, FastME)
     % Get the dimensions of the frame
-      [height, width] = size(currentFrame);
+    [height, width] = size(currentFrame);
 
     % Initialize the motion vector array and VBS matrix
     numBlocksX = width / blockSize;
@@ -17,7 +17,7 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             else
                 referenceFrames = originalReferenceFrames;
             end
-            
+
             % Single large block: size is 2 * blockSize (i.e., twice the size in both dimensions)
             currentBlockSize = blockSize * 2;
             rowOffset = (blockY - 1) * blockSize + 1;
@@ -28,31 +28,30 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
                                         colOffset:colOffset + currentBlockSize - 1);
 
             % Compute motion estimation for large block and split blocks
-            
             [motionVector_block_large, total_minMAE_large] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block, true, FMEEnable, FastME);
             [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block, false, FMEEnable, FastME);
-            
+
             % Compute predicted frames for large and split blocks
-            predictedFrame_block_large = compute_predictedFrame_block(referenceFrames, motionVector_block_large, rowOffset, colOffset, blockSize);
-            predictedFrame_block_split = compute_predictedFrame_block(referenceFrames, motionVector_block_split, rowOffset, colOffset, blockSize);
-            
+            predictedFrame_block_large = compute_predictedFrame_block(referenceFrames,interpolatedReferenceFrames, motionVector_block_large, rowOffset, colOffset, blockSize,FMEEnable);
+            predictedFrame_block_split = compute_predictedFrame_block(referenceFrames,interpolatedReferenceFrames, motionVector_block_split, rowOffset, colOffset, blockSize,FMEEnable);
+
             % Compute residuals
             Residuals_block_large = double(currentBlock) - double(predictedFrame_block_large);
             Residuals_block_split = double(currentBlock) - double(predictedFrame_block_split);
 
             % Construct vbs_matrix for large block (all zeros indicating large blocks)
             vbs_matrix_large = zeros(currentBlockSize / dct_blockSize, currentBlockSize / dct_blockSize);
-            
-             % Quantize residuals using vbs_matrix for large block
+
+            % Quantize residuals using vbs_matrix for large block
             quantizedResiduals_large = quantization(Residuals_block_large, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_large);
 
-             % Construct vbs_matrix for split blocks (all ones indicating small blocks)
+            % Construct vbs_matrix for split blocks (all ones indicating small blocks)
             vbs_matrix_split = ones(currentBlockSize / dct_blockSize, currentBlockSize / dct_blockSize);
 
-             % Quantize residuals using vbs_matrix for split blocks
+            % Quantize residuals using vbs_matrix for split blocks
             quantizedResiduals_split = quantization(Residuals_block_split, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_split);
 
-             % Inverse quantization
+            % Inverse quantization
             compresiduals_large = invquantization_block(quantizedResiduals_large, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_large);
             compresiduals_split = invquantization_block(quantizedResiduals_split, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_split);
 
@@ -60,27 +59,27 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             reconstructed_large = predictedFrame_block_large + compresiduals_large;
             reconstructed_split = predictedFrame_block_split + compresiduals_split;
 
-             % Compute SAD (Sum of Absolute Differences)
+            % Compute SAD (Sum of Absolute Differences)
             SAD_large = sum(sum(abs(double(currentBlock) - double(reconstructed_large))));
             SAD_split = sum(sum(abs(double(currentBlock) - double(reconstructed_split))));
-            
+
             % Differential encoding for motion vectors
             [MDiffMV_large, previous_motion_vector_block_large] = diffEncoding_block(motionVector_block_large, 'mv', previous_motion_vector_block);
             [MDiffMV_split, previous_motion_vector_block_split] = diffEncoding_block(motionVector_block_split, 'mv', previous_motion_vector_block);
-            
+
             % Entropy encoding
             [encodedMDiff_large, ~, encodedResidues_large] = entropyEncode(false, MDiffMV_large, [], quantizedResiduals_large);
             [encodedMDiff_split, ~, encodedResidues_split] = entropyEncode(false, MDiffMV_split, [], quantizedResiduals_split);
-           
+
             % Calculate rate (R) for large and split blocks
             total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);
             total_bits_split = numel(encodedMDiff_split) + numel(encodedResidues_split);
-            
+
             total_bits = total_bits_large + total_bits_split;  % Total bits for normalization
-           
+
             R_large = total_bits_large / total_bits;
             R_split = total_bits_split / total_bits;
-            
+
             % Normalize SAD for distortion (D)
             total_SAD = SAD_large + SAD_split;
             D_large = SAD_large / total_SAD;
@@ -89,8 +88,8 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame,
             % Calculate RD cost
             J_large = D_large + lambda * R_large;
             J_split = D_split + lambda * R_split;
-            
-            % Choose the motion vector block with the lower RD cose
+
+            % Choose the motion vector block with the lower RD cost
             if J_large < J_split
                 motionVector_block = motionVector_block_large;
                 total_minMAE = total_minMAE_large;
@@ -119,7 +118,7 @@ end
 
 
 
-function predictedBlock = compute_predictedFrame_block(referenceFrames, motionVector_block, rowOffset, colOffset, blockSize)
+function predictedBlock = compute_predictedFrame_block(referenceFrames,interpolatedReferenceFrames, motionVector_block, rowOffset, colOffset, blockSize,FMEEnable)
     % This function computes the predicted block from the reference frames based on motion vectors.
     %
     % Parameters:
@@ -148,20 +147,28 @@ function predictedBlock = compute_predictedFrame_block(referenceFrames, motionVe
             subBlockColOffset = colOffset + (blockX - 1) * blockSize;
             
             % Get the corresponding reference frame
-            referenceFrame = referenceFrames{refIdx};
-            
+            if FMEEnable
+                referenceFrame = referenceFrames{refIdx};
+            else
+                referenceFrame = interpolatedReferenceFrames{refIdx};
+            end
             % Calculate the position of the reference sub-block based on the motion vector
-            refRowOffset = subBlockRowOffset + mvY;
-            refColOffset = subBlockColOffset + mvX;
+            refRowStart = subBlockRowOffset + mvY;
+            refColStart = subBlockColOffset + mvX;
             
-            % Ensure the reference sub-block is within the bounds of the reference frame
-            [height, width] = size(referenceFrame);
-            refRowOffset = max(1, min(refRowOffset, height - blockSize + 1));
-            refColOffset = max(1, min(refColOffset, width - blockSize + 1));
+            % % Ensure the reference sub-block is within the bounds of the reference frame
+            % [height, width] = size(referenceFrame);
+            % refRowStart = max(1, min(refRowOffset, height - blockSize + 1));
+            % refColStart = max(1, min(refColOffset, width - blockSize + 1));
 
-            % Extract the reference sub-block
-            referenceBlock = referenceFrame(refRowOffset:refRowOffset + blockSize - 1, ...
-                                           refColOffset:refColOffset + blockSize - 1);
+            if FMEEnable
+                refRowStart = 2*subBlockRowOffset -1 + mvY;
+                refColStart = 2*subBlockColOffset -1 + mvX;
+                referenceBlock = referenceFrame(refRowStart:2:(refRowStart + 2* blockSize - 2), refColStart:2:(refColStart + 2 * blockSize - 2));
+            else
+                referenceBlock = referenceFrame(refRowStart:(refRowStart + blockSize - 1), refColStart:(refColStart + blockSize - 1));
+            end
+
 
             % Place the reference sub-block into the predicted block
             predictedBlock((blockY - 1) * blockSize + 1:blockY * blockSize, ...

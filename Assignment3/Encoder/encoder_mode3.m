@@ -347,8 +347,8 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, referenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block,  false, FMEEnable, FastME);
                             
                             % Compute predicted frames for large and split blocks
-                            predictedFrame_block_large = compute_predictedFrame_block(referenceFrames, motionVector_block_large, rowOffset, colOffset, blockSize);
-                            predictedFrame_block_split = compute_predictedFrame_block(referenceFrames, motionVector_block_split, rowOffset, colOffset, blockSize);
+                            predictedFrame_block_large = compute_predictedFrame_block(referenceFrames, motionVector_block_large, rowOffset, colOffset, blockSize, FMEEnable);
+                            predictedFrame_block_split = compute_predictedFrame_block(referenceFrames, motionVector_block_split, rowOffset, colOffset, blockSize, FMEEnable);
                             
 
                              % Compute residuals
@@ -901,17 +901,16 @@ function predictedBlock = compute_predictedFrame_block(referenceFrames, motionVe
             referenceFrame = referenceFrames{refIdx};
             
             % Calculate the position of the reference sub-block based on the motion vector
-            refRowOffset = subBlockRowOffset + mvY;
-            refColOffset = subBlockColOffset + mvX;
+            refRowStart = subBlockRowOffset + mvY;
+            refColStart = subBlockColOffset + mvX;
             
-            % Ensure the reference sub-block is within the bounds of the reference frame
-            [height, width] = size(referenceFrame);
-            refRowOffset = max(1, min(refRowOffset, height - blockSize + 1));
-            refColOffset = max(1, min(refColOffset, width - blockSize + 1));
-
-            % Extract the reference sub-block
-            referenceBlock = referenceFrame(refRowOffset:refRowOffset + blockSize - 1, ...
-                                           refColOffset:refColOffset + blockSize - 1);
+            if FMEEnable
+                refRowStart = 2*subBlockRowOffset -1 + mvY;
+                refColStart = 2*subBlockColOffset -1 + mvX;
+                referenceBlock = referenceFrame(refRowStart:2:(refRowStart + 2* blockSize - 2), refColStart:2:(refColStart + 2 * blockSize - 2));
+            else
+                referenceBlock = referenceFrame(refRowStart:(refRowStart + blockSize - 1), refColStart:(refColStart + blockSize - 1));
+            end
 
             % Place the reference sub-block into the predicted block
             predictedBlock((blockY - 1) * blockSize + 1:blockY * blockSize, ...

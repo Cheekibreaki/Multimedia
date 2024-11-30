@@ -128,15 +128,15 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         if isIFrame
            if VBSEnable
                quantizedResiduals = residualFrame;
-                [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
+                [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
            else
                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-               [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
+               [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
            end
 
             save(sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx), 'encodedMDiff');
             residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
-            save(residualFile, 'encodedResidues');
+            save(residualFile, 'encodedResiduals');
 
             % Clear all previous reference frames
             for i = 1:nRefFrames
@@ -151,16 +151,16 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
 
             if VBSEnable
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
-                [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
+                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
             else
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
+                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
             end
 
             motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
             save(motionVectorFile, 'encodedMDiff');
             residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
-            save(residualFile, 'encodedResidues');
+            save(residualFile, 'encodedResiduals');
         end
 
 
