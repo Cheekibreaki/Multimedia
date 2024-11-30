@@ -29,18 +29,26 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
     % Open the padded Y only file
     fid = fopen(paddedOutputFile, 'r');
 
-    % Open file for dumping motion vectors
+    if fid == -1
+        error('Failed to open input file: %s', paddedOutputFile);
+    end
 
-    yuvFile = fopen(referenceFile, 'w');
-    
-    % % For the first frame, use the hypothetical reconstructed frame as
-    % reference
+    % Initialize storage for frames
+    frames = cell(1, numFrames);
+    for frameIdx = 1:numFrames
+        frames{frameIdx} = fread(fid, [width, height], 'uint8')';
+    end
+    fclose(fid);
+
 
     % if FMEEnable
     %     referenceFrame = 128 * ones(height, width, 'uint8');
     % else
     %     referenceFrame = 128 * ones(2*height - 1, 2*width - 1, 'uint8');
     % end
+
+    % Initialize a cell array to collect data from workers
+    frameData = cell(1, numFrames);
 
     % Frame-level parallelism
     spmd(2)
@@ -59,17 +67,31 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                 if frameIdx == 1
                     if FMEEnable
                         referenceFrame = 128 * ones(height, width, 'uint8');
+                        referenceFrames = {referenceFrame};
                     else 
                         referenceFrame = 128 * ones(2*height - 1, 2*width - 1, 'uint8');
+                        referenceFrames = {referenceFrame};
                     end
                 else
+                    fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 2);
                     referenceFrame = spmdReceive(2);
+                    fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 2);
+                    referenceFrames = {referenceFrame};
                 end
             end
 
-            currentFrame = fread(fid,[width, height], 'uint8')';
+            if spmdIndex ==2
+                fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                %referenceFrame = spmdReceive(1);
+                referenceFrame = spmdReceive(1);
+                fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                referenceFrames = {referenceFrame};
+            end
+
+
+            currentFrame = frames{frameIdx};
     
-            %determin the frame type
+            %determine the frame type
             if frameIdx == 1
                 isIFrame = true;
             elseif frameIdx < I_Period
@@ -93,6 +115,14 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                         vbs_matrix = -1 * ones(numBlocksY, numBlocksX);
                     
                         for blockY = 1:2:numBlocksY
+                             %dummy receive to prevent blocking worker 1
+                           if spmdIndex == 2
+                                if blockY ~= numBlocksX
+                                    fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                    referenceFrame = spmdReceive(1);
+                                    fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                end
+                           end
                             for blockX = 1:2:numBlocksX
                                 % Extract the current block for RD cost calculation
                                 rowOffset = (blockY - 1) * blockSize + 1;
@@ -109,7 +139,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                                 % VBS large estimation
                                 [quantized_residualBlock_large, approximatedReconstructed_block_large, approximatedPredictedFrame_large, predictionModes_large, approximatedReconstructedFrame_large] = ...
                                     VBS_large_estimation(currentFrame, approximatedPredictedFrame, currPredictionModes, approximatedReconstructedFrame, ...
-                                    blockY, blockX, blockSize, dct_blockSize, baseQP);
+                                    blockY, blockX, blockSize, dct_blockSize, QP);
                                 
                                 % Compute SAD for reconstructed_split
                                 SAD_split = sum(sum(abs(double(currentBlock) - double(approximatedReconstructed_block_split))));
@@ -175,8 +205,8 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                            spmdSend(approximatedReconstructedFrame, 1);
                        end    
                    end
+
                    MDiffModes = currPredictionModes;
-                   predictedFrame = approximatedPredictedFrame;
                   
                else
                
@@ -186,6 +216,14 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     
                     
                     for y = 1:blockSize:height
+                        %dummy receive to prevent blocking worker 1
+                       if spmdIndex == 2
+                            if y ~= height - blockSize + 1  % Only receive if not at the last row
+                                fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                referenceFrame = spmdReceive(1);
+                                fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                            end
+                       end
                         for x = 1:blockSize:width
                             actualBlockHeight = min(blockSize, height-y+1);
                             actualBlockWidth = min(blockSize, width-x+1);
@@ -223,8 +261,9 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             end
                             
                             residualBlock = currentFrame(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1) - approximatedPredictedFrame(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1);
-                            quantizedBlock = quantization(residualBlock, dct_blockSize,blockSize,blockSize,baseQP);
-                            approximatedresidualBlock = invquantization(quantizedBlock,dct_blockSize,blockSize,blockSize,baseQP);
+                            quantizedBlock = quantization(residualBlock, dct_blockSize,blockSize,blockSize,QP);
+                            approximatedresidualBlock = invquantization(quantizedBlock,dct_blockSize,blockSize,blockSize, ...
+                                QP);
                             approximatedReconstructedFrame(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1) = double(max(0, min (255, approximatedresidualBlock + approximatedPredictedFrame(y:y+actualBlockHeight-1, x:x+actualBlockWidth-1))));      
                         end
                         if spmdIndex == 1
@@ -245,11 +284,23 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                end
                
               
+               if VBSEnable
+                   quantizedResiduals = residualFrame;
+                    [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
+               else
+                   quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
+                   [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
+               end
+    
+                % Store worker data for this frame
+                workerData{(frameIdx - spmdIndex + 2) / 2} = struct(...
+                    'frameIdx', frameIdx, ...
+                    'encodedMDiff', encodedMDiff, ...
+                    'encodedResiduals', encodedResiduals);
             else
     
                 % Motion estimation
                 if VBSEnable
-                                    % [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, referenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
                     % Initialize the motion vector array (for storing motion vectors for each block)
                     numBlocksX = width / blockSize;
                     numBlocksY = height / blockSize;
@@ -258,14 +309,26 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     totalMAE = 0;  % To keep track of the total MAE across all blocks
                     approximatedReconstructedFrame(1:height,1:width) = zeros(size(currentFrame), 'double');
                     approximatedPredictedFrame = zeros(size(currentFrame), 'double');
+                    
+                    if spmdIndex == 1
+                        referenceFrames = {referenceFrame};
+                    end
+
                     for blockY = 1:2:numBlocksY
                         previous_motion_vector_block = zeros(1, 1, 3);
-                        for blockX = 1:2:numBlocksX
-                            if FMEEnable
-                                referenceFrames = interpolatedReferenceFrames;
-                            else
-                                referenceFrames = originalReferenceFrames;
+                         if spmdIndex == 2
+                            if blockY ~= numBlocksX
+                                fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                referenceFrame = spmdReceive(1);
+                                fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                if FMEEnable
+                                    referenceFrame = interpolateFrame(referenceFrame);
+                                end
+                                referenceFrames = {referenceFrame};
                             end
+                         end
+
+                        for blockX = 1:2:numBlocksX
                             % Single large block: size is 2 * blockSize (i.e., twice the size in both dimensions)
                             currentBlockSize = blockSize * 2;
                             rowOffset = (blockY - 1) * blockSize + 1;
@@ -277,85 +340,66 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                 
                             % Compute motion estimation for large block and split blocks
                             
-                            [motionVector_block_large, total_minMAE_large] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block, true, FMEEnable, FastME);
-                            [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block,  false, FMEEnable, FastME);
+                            [motionVector_block_large, total_minMAE_large] = compute_motionVector_block(currentBlock, currentBlockSize, referenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block, true, FMEEnable, FastME);
+                            [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, referenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block,  false, FMEEnable, FastME);
                             
-                            
+                            % Compute predicted frames for large and split blocks
                             predictedFrame_block_large = compute_predictedFrame_block(referenceFrames, motionVector_block_large, rowOffset, colOffset, blockSize);
                             predictedFrame_block_split = compute_predictedFrame_block(referenceFrames, motionVector_block_split, rowOffset, colOffset, blockSize);
                             
+
+                             % Compute residuals
                             Residuals_block_large = double(currentBlock) - double(predictedFrame_block_large);
                             Residuals_block_split = double(currentBlock) - double(predictedFrame_block_split);
                 
-                            quantizedResiduals_large = quantization(Residuals_block_large, dct_blockSize,currentBlockSize,currentBlockSize,QP);
-                            
-                             % Split the 16x16 residue into four 8x8 blocks
-                            blockSizeSmall = blockSize; % blockSize here is 8
-                            Residuals_split_1 = Residuals_block_split(1:blockSizeSmall, 1:blockSizeSmall);
-                            Residuals_split_2 = Residuals_block_split(1:blockSizeSmall, blockSizeSmall+1:end);
-                            Residuals_split_3 = Residuals_block_split(blockSizeSmall+1:end, 1:blockSizeSmall);
-                            Residuals_split_4 = Residuals_block_split(blockSizeSmall+1:end, blockSizeSmall+1:end);
+                            % Construct vbs_matrix for large block (all zeros indicating large blocks)
+                            vbs_matrix_large = zeros(currentBlockSize / dct_blockSize, currentBlockSize / dct_blockSize);
                 
-                            % Quantize each of the four 8x8 blocks separately
-                            quantizedResiduals_1 = quantization(Residuals_split_1, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-                            quantizedResiduals_2 = quantization(Residuals_split_2, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-                            quantizedResiduals_3 = quantization(Residuals_split_3, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-                            quantizedResiduals_4 = quantization(Residuals_split_4, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
+                            % Quantize residuals using vbs_matrix for large block
+                            quantizedResiduals_large = quantization(Residuals_block_large, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_large);
                 
-                            % Combine the quantized 8x8 blocks back into a 16x16 block
-                            quantizedResiduals_split = [quantizedResiduals_1, quantizedResiduals_2;
-                                                       quantizedResiduals_3, quantizedResiduals_4];
+                            % Construct vbs_matrix for split blocks (all ones indicating small blocks)
+                            vbs_matrix_split = ones(currentBlockSize / dct_blockSize, currentBlockSize / dct_blockSize);
                 
+                            % Quantize residuals using vbs_matrix for split blocks
+                            quantizedResiduals_split = quantization(Residuals_block_split, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_split);
                 
-                            compresiduals_large = invquantization(quantizedResiduals_large, dct_blockSize,currentBlockSize,currentBlockSize,QP);
+                            % Inverse quantization
+                            compresiduals_large = invquantization_block(quantizedResiduals_large, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_large);
+                            compresiduals_split = invquantization_block(quantizedResiduals_split, dct_blockSize, currentBlockSize, currentBlockSize, QP, vbs_matrix_split);
                 
-                            
-                            % Compute the inverse quantized residuals for the split blocks
-                            compresiduals_1 = invquantization(quantizedResiduals_1, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-                            compresiduals_2 = invquantization(quantizedResiduals_2, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-                            compresiduals_3 = invquantization(quantizedResiduals_3, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-                            compresiduals_4 = invquantization(quantizedResiduals_4, dct_blockSize, blockSizeSmall, blockSizeSmall, QP-1);
-                
-                            % Combine the inverse quantized 8x8 blocks back into a 16x16 block
-                            compresiduals_split = [compresiduals_1, compresiduals_2;
-                                                   compresiduals_3, compresiduals_4];
-                
-                            
-                            reconstructed_split = predictedFrame_block_split + compresiduals_split;
+                            % Reconstruct frames
                             reconstructed_large = predictedFrame_block_large + compresiduals_large;
-                            
-                            
+                            reconstructed_split = predictedFrame_block_split + compresiduals_split;
                 
-                            % Compute SAD for reconstructed_split
-                            SAD_split = sum(sum(abs(double(currentBlock) - double(reconstructed_split))));
-                            
-                            % Compute SAD for reconstructed_large
+                            % Compute SAD (Sum of Absolute Differences)
                             SAD_large = sum(sum(abs(double(currentBlock) - double(reconstructed_large))));
-                            
-                            [MDiffMV_large,previous_motion_vector_block_large] = diffEncoding_block(motionVector_block_large,'mv',previous_motion_vector_block);
-                            [MDiffMV_split,previous_motion_vector_block_split] = diffEncoding_block(motionVector_block_split,'mv',previous_motion_vector_block);
-                
-                            [encodedMDiff_large,nonimporatant1,encodedResidues_large] = entropyEncode(false, MDiffMV_large, [], quantizedResiduals_large);
-                            [encodedMDiff_split,nonimporatant1,encodedResidues_split] = entropyEncode(false, MDiffMV_split, [], quantizedResiduals_split);
-                            
-                           
+                            SAD_split = sum(sum(abs(double(currentBlock) - double(reconstructed_split))));
+                            % Differential encoding for motion vectors
+                            [MDiffMV_large, previous_motion_vector_block_large] = diffEncoding_block(motionVector_block_large, 'mv', previous_motion_vector_block);
+                            [MDiffMV_split, previous_motion_vector_block_split] = diffEncoding_block(motionVector_block_split, 'mv', previous_motion_vector_block);
+                            % Entropy encoding
+                            [encodedMDiff_large, ~, encodedResidues_large] = entropyEncode(false, MDiffMV_large, [], quantizedResiduals_large);
+                            [encodedMDiff_split, ~, encodedResidues_split] = entropyEncode(false, MDiffMV_split, [], quantizedResiduals_split);
+                                           
                             % Calculate rate (R) for large and split blocks
                             total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);
                             total_bits_split = numel(encodedMDiff_split) + numel(encodedResidues_split);
                             
+                            total_bits = total_bits_large + total_bits_split;  % Total bits for normalization
+                            R_large = total_bits_large / total_bits;
+                            R_split = total_bits_split / total_bits;
                             
-                
-                            R_large = total_bits_large/(total_bits_large+total_bits_split);
-                            R_split = total_bits_split/(total_bits_large+total_bits_split);
-                        
-                            D_large = SAD_large/(SAD_split+SAD_large);
-                            D_split = SAD_split/(SAD_split+SAD_large);
-                
+                            % Normalize SAD for distortion (D)
+                            total_SAD = SAD_large + SAD_split;
+                            D_large = SAD_large / total_SAD;
+                            D_split = SAD_split / total_SAD;
+                            
                             % Calculate RD cost
                             J_large = D_large + lambda * R_large;
                             J_split = D_split + lambda * R_split;
                             
-                            % Choose the motion vector block with the lower MAE
+                            % Choose the motion vector block with the lower RD cost
                             if J_large < J_split
                                 motionVector_block = motionVector_block_large;
                                 total_minMAE = total_minMAE_large;
@@ -377,36 +421,6 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                 
                             % Store the motion vectors in the corresponding positions
                             motionVectors(blockY:blockY+1, blockX:blockX+1, :) = motionVector_block;
-                
-                            % % Reconstruct the big block
-                            % 
-                            % for rowIdx = 1:2
-                            %     for colIdx = 1:2
-                            %         dy = motionVector_block(rowIdx, colIdx, 1);
-                            %         dx = motionVector_block(rowIdx, colIdx, 2);
-                            %         refIdx = motionVector_block(rowIdx, colIdx, 3)+1;
-                            % 
-                            %         row = (blockY -1)*blockSize + 1;
-                            %         col = (blockX -1)*blockSize + 1;
-                            % 
-                            %         % Compute the coordinates of the reference block based on the motion vector
-                            %         refRowStart = row + dy;
-                            %         refColStart = col + dx;
-                            % 
-                            %         % Extract the reference block from the reference frame
-                            %         if FMEEnable
-                            %             refRowStart = 2*row-1 + dy;
-                            %             refColStart = 2*col-1 + dx;
-                            %             refBlock = referenceFrame(refRowStart:2:(refRowStart + 2* blockSize - 2), refColStart:2:(refColStart + 2 * blockSize - 2));
-                            %         else
-                            %             refBlock = referenceFrame(refRowStart:(refRowStart + blockSize - 1), refColStart:(refColStart + blockSize - 1));
-                            %         end
-                            % 
-                            %         % Place the reference block into the predicted frame
-                            %         approximatedPredictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,refBlock)));
-                            % 
-                            %     end
-                            % end
 
                             totalMAE = totalMAE + minMAE;
                         end
@@ -428,7 +442,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     % Calculate the average MAE across all blocks
                     avgMAE = totalMAE / (numBlocksX * numBlocksY /4);
                     
-                    MDiffMV = currMotionVectors;
+                    MDiffMV = motionVectors;
                 
                 else
                     approximatedReconstructedFrame(1:height,1:width) = zeros(size(currentFrame), 'double');
@@ -443,6 +457,14 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     % Process blocks in raster order (left to right, top to bottom)
                     for row = 1:blockSize:height
                         predictedMV = [0,0];
+                        if spmdIndex == 2
+                            if row ~= height - blockSize + 1  % Only receive if not at the last row
+                                referenceFrame = spmdReceive(1);
+                                if FMEEnable
+                                    referenceFrame = interpolateFrame(referenceFrame);
+                                end
+                            end
+                         end
                         for col = 1:blockSize:width
                             % Extract the current block from the current frame
                             currentBlock = currentFrame(row:row+blockSize-1, col:col+blockSize-1);
@@ -452,36 +474,39 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             bestRefIdx = 0;
                             minMAE = inf;
                             bestL1Norm = inf;
-                                
-                                % If fractional ME is enabled
-                                if FMEEnable
-                                    if FastME
-                                    % If fast ME is enabled
-                                        [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, row, col, blockSize, searchRange, predictedMV);
+                                % Check all reference frames to find the best match
+                            for refIdx = 1:length(referenceFrames)
+                                referenceFrame = referenceFrames{refIdx}; 
+                                    % If fractional ME is enabled
+                                    if FMEEnable
+                                        if FastME
+                                        % If fast ME is enabled
+                                            [vector, mae, L1Norm] = findBestMatchFastFraction(currentBlock, referenceFrame, row, col, blockSize, searchRange, predictedMV);
+                                        else
+                                        % If fast ME is NOT enabled
+                                            [vector, mae, L1Norm] = findBestMatchFractionalPixel(currentBlock, referenceFrame, row, col, blockSize, searchRange);
+                                        end
                                     else
-                                    % If fast ME is NOT enabled
-                                        [vector, mae, L1Norm] = findBestMatchFractionalPixel(currentBlock, referenceFrame, row, col, blockSize, searchRange);
+                                    % If fractional ME is NOT enabled
+                                        if FastME
+                                        % If fast ME is enabled
+                                            [vector, mae, L1Norm] = findBestMatchFast(currentBlock, referenceFrame, row, col, blockSize, searchRange, predictedMV);
+                                        else
+                                        % If fast ME is NOT enabled
+                                            [vector, mae, L1Norm] = findBestMatchFullPixel(currentBlock, referenceFrame, row, col, blockSize, searchRange);
+                                        end
+                    
                                     end
-                                else
-                                % If fractional ME is NOT enabled
-                                    if FastME
-                                    % If fast ME is enabled
-                                        [vector, mae, L1Norm] = findBestMatchFast(currentBlock, referenceFrame, row, col, blockSize, searchRange, predictedMV);
-                                    else
-                                    % If fast ME is NOT enabled
-                                        [vector, mae, L1Norm] = findBestMatchFullPixel(currentBlock, referenceFrame, row, col, blockSize, searchRange);
+                    
+                                    % Update if a better match is found
+                                    if mae < minMAE || (mae == minMAE && L1Norm < bestL1Norm)
+                                        minMAE = mae;
+                                        bestVector = vector;
+                                        bestL1Norm = L1Norm;
+                                        bestRefIdx = refIdx;
                                     end
-                
-                                end
-                
-                                % Update if a better match is found
-                                if mae < minMAE || (mae == minMAE && L1Norm < bestL1Norm)
-                                    minMAE = mae;
-                                    bestVector = vector;
-                                    bestL1Norm = L1Norm;
-                                    bestRefIdx = refIdx;
-                                end
-                          
+                            end
+                              
                 
                             dy = bestVector(1);
                             dx = bestVector(2);
@@ -513,6 +538,15 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             % Place the reference block into the predicted frame
                             approximatedPredictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,refBlock)));
                             
+
+                            % Compute residuals
+                            residuals_block = double(currentBlock) - double(refBlock);
+                            quantized_block = quantization(residuals_block, dct_blockSize, blockSize, blockSize, QP);
+                            approximated_residualBlock = invquantization(quantized_block,dct_blockSize,blockSize,blockSize,QP);
+                            approximatedReconstructedBlock = approximated_residualBlock + refBlock;
+                            approximatedReconstructedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,approximatedReconstructedBlock)));
+                            
+                            
                             totalMAE = totalMAE + minMAE;
 
                             
@@ -537,65 +571,42 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     predictedFrame = approximatedPredictedFrame;
                     Residuals = double(currentFrame) - double(predictedFrame);    
                 end
-            end
-            
-            if isIFrame
-               if VBSEnable
-                   quantizedResiduals = residualFrame;
-                    [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
-               else
-                   quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                   [nonimporatant1,encodedMDiff,encodedResidues] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
-               end
-    
-                % save(sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx), 'encodedMDiff');
-                % residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
-                % save(residualFile, 'encodedResidues');
-          
-            else
-    
+
                 if VBSEnable
                      quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
-                    [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
+                    [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
                 else
                     quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                    [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
+                    [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
                 end
     
-                % motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
-                % save(motionVectorFile, 'encodedMDiff');
-                % residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
-                % save(residualFile, 'encodedResidues');
+               % Store worker data for this frame
+                workerData{(frameIdx - spmdIndex + 2) / 2} = struct(...
+                    'frameIdx', frameIdx, ...
+                    'encodedMDiff', encodedMDiff, ...
+                    'encodedResiduals', encodedResiduals);
+ 
             end
-    
-    
-            % Reconstruct the frame at the encoder side to create a closed loop 
-            % Use it as the reference frame for the next frame
-            
-            compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
-            if VBSEnable
-
-                    compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
-
-            end
-    
-            reconstructedFrame = double(predictedFrame) + double(compresiduals);
-            reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
-            interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
-    
-            fwrite(yuvFile, reconstructedFrame', 'uint8');
-            % 
-            % % Update the reference frames using a sliding window
-            % referenceFrames = [{reconstructedFrame}, referenceFrames(1:nRefFrames - 1)];
-            % interpolatedReferenceFrames = [{interpolatedReconstructedFrame}, interpolatedReferenceFrames(1:nRefFrames - 1)];
-            fprintf('Processed frame %d\n', frameIdx);
-           
-            
         end
     end
-    % Close the file
-    fclose(fid);
-    fclose(yuvFile);
+
+    % Combine data from all workers
+    allWorkerData = [workerData{1}, workerData{2}];
+    
+    % Save data in the required format
+    for i = 1:length(allWorkerData)
+        frameData = allWorkerData{i};
+        frameIdx = frameData.frameIdx;
+    
+        % Save motion vector file
+        motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
+        save(motionVectorFile, 'frameData.encodedMDiff');
+    
+        % Save residuals file
+        residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
+        save(residualFile, 'frameData.encodedResiduals');
+    end
+      
 
 end
 
@@ -662,7 +673,7 @@ function [quantizedResidualBlock, approximatedReconstructedBlock, approximatedPr
         if subBlockY <= numBlocksY && subBlockX <= numBlocksX
             [qResidual, aReconstructedBlock, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame,approximatedresidualFrame] = ...
                 processBlock(currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
-                subBlockY, subBlockX, rowOffsetSub, colOffsetSub, blockSize, dct_blockSize, baseQP, mode, isLarge);
+                subBlockY, subBlockX, rowOffsetSub, colOffsetSub, blockSize, dct_blockSize, baseQP -1, mode, isLarge);
 
             % Place the sub-blocks into the combined block
             actualSubBlockHeight = size(aReconstructedBlock, 1);
@@ -880,7 +891,7 @@ end
 
 
 
-function [motionVector_block,total_minMAE] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, predictedMV, isLarge,FMEEnable, FastME)
+function [motionVector_block,total_minMAE] = compute_motionVector_block(currentBlock, currentBlockSize, referenceFrames, rowOffset, colOffset, searchRange, predictedMV, isLarge,FMEEnable, FastME)
     
     % Initialize variables for the best match
     bestVector = [0, 0];
@@ -893,11 +904,7 @@ function [motionVector_block,total_minMAE] = compute_motionVector_block(currentB
     subBlockSize = currentBlockSize / 2;
     predictedMV_new = reshape(predictedMV(:,:,1:2), 1, 2); % Explicitly reshape to 1x2
     predictedMV = predictedMV_new;
-    if FMEEnable
-        referenceFrames = interpolatedReferenceFrames;
-    else
-        referenceFrames = originalReferenceFrames;
-    end
+  
     if isLarge
         
         % Check all reference frames to find the best match
