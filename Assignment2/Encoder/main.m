@@ -4,7 +4,7 @@ addpath('../Decoder');  % For Decoder functions
 % Parameters
 filename = '../foreman_cif-1.yuv';  % YUV file to read
 outputFile = '../Outputs/Y_only_foreman.yuv'; % File to store Y-only components
-paddedOutputFile = '../Outputs/padded_Y_foreman.yuv'; % File to store padded Y components
+paddedOutputFile = '../Outputs/padtrueded_Y_foreman.yuv'; % File to store padded Y components
 referenceFile = '../Outputs/referenceFrames.yuv';
 decodedFile = '../Outputs/decoded_Y_foreman.yuv';
 width = 352;                     % Frame width
@@ -14,7 +14,7 @@ searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 4;
 j = 4;
 VBSEnable = true;
-FMEEnable = false;
+FMEEnable = true;
 FastME = false;
 
 if(VBSEnable == true)
