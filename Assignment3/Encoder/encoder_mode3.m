@@ -225,6 +225,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
 
                    MDiffModes = currPredictionModes;
                    reconstructedFrame = approximatedReconstructedFrame;
+                   predictedFrame = approximatedPredictedFrame;
                    
                else
                
@@ -328,12 +329,14 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                    [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
                end
     
-                % Store worker data for this frame
+          
+
                workerData{(frameIdx - spmdIndex + 2) / 2} = struct(...
                     'frameIdx', frameIdx, ...
                     'encodedMDiff', encodedMDiff, ...
                     'encodedResiduals', encodedResiduals, ...
-                    'reconstructedFrame',reconstructedFrame);
+                    'reconstructedFrame',reconstructedFrame,...
+                    'predictedFrame',predictedFrame);
               
             else
     
@@ -584,7 +587,8 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             
                             
                             % Place the reference block into the predicted frame
-                            approximatedPredictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,refBlock)));
+                            approximatedPredictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = refBlock;
+                            %double(max(0,min(255,refBlock)));
                             
 
                             % Compute residuals
@@ -592,7 +596,8 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             quantized_block = quantization(residuals_block, dct_blockSize, blockSize, blockSize, QP);
                             approximated_residualBlock = invquantization(quantized_block,dct_blockSize,blockSize,blockSize,QP);
                             approximatedReconstructedBlock = approximated_residualBlock + refBlock;
-                            approximatedReconstructedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,approximatedReconstructedBlock)));
+                            approximatedReconstructedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = approximatedReconstructedBlock;
+                            %double(max(0,min(255,approximatedReconstructedBlock)));
              
                             totalMAE = totalMAE + minMAE;
 
@@ -608,7 +613,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                 
                     % Calculate the average MAE across all blocks
                     avgMAE = totalMAE / (numBlocksX * numBlocksY);
-                    currMotionVectors
+                    % currMotionVectors
                     MDiffMV = diffEncoding(currMotionVectors,'mv');
                     reconstructedFrame = approximatedReconstructedFrame;
 
@@ -622,6 +627,15 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     predictedFrame = approximatedPredictedFrame;
                     Residuals = double(currentFrame) - double(predictedFrame);    
                    
+                    % if frameIdx == 8
+                    % 
+                    %     fprintf('Residual value for frame 8',Residuals)
+                    % end
+
+                    % Check if the matrix contains -1 or 0 
+                    if any(Residuals(:) == -1 | Residuals(:) == 0) 
+                        disp(Residuals); 
+                    end
                 end
 
                 if VBSEnable
@@ -637,7 +651,8 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     'frameIdx', frameIdx, ...
                     'encodedMDiff', encodedMDiff, ...
                     'encodedResiduals', encodedResiduals, ...
-                    'reconstructedFrame',reconstructedFrame);
+                    'reconstructedFrame',reconstructedFrame,...
+                    'predictedFrame',predictedFrame);
 
             end
         end
@@ -657,7 +672,9 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
     if reconstructedYUVFile == -1
         error('Failed to open YUV file for writing reconstructed frames.');
     end
-
+    
+    predictedFile = '../Outputs/predictedFrames.yuv';
+    predictedYUVFile = fopen(predictedFile,'w');
     % Save data in the required format
     for i = 1:length(sortedWorkerData)
         frameData = sortedWorkerData{i};
@@ -676,9 +693,13 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
         % Save reconstructed frame to YUV file
         reconstructedFrame = frameData.reconstructedFrame;
         fwrite(reconstructedYUVFile, reconstructedFrame', 'uint8'); % Write in YUV format
+
+        predictedFrame = frameData.predictedFrame;
+        fwrite(predictedYUVFile, predictedFrame','uint8');
     end
 
     fclose(reconstructedYUVFile);
+    fclose(predictedYUVFile);
        
 end
 
