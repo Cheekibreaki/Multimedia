@@ -149,9 +149,9 @@ function predictedBlock = compute_predictedFrame_block(referenceFrames,interpola
             
             % Get the corresponding reference frame
             if FMEEnable
-                referenceFrame = referenceFrames{refIdx};
+                 referenceFrame = interpolatedReferenceFrames{refIdx};
             else
-                referenceFrame = interpolatedReferenceFrames{refIdx};
+                referenceFrame = referenceFrames{refIdx};
             end
             % Calculate the position of the reference sub-block based on the motion vector
             refRowStart = subBlockRowOffset + mvY;

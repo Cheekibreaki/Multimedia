@@ -14,8 +14,8 @@ searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 4;
 j = 4;
 VBSEnable = true;
-FMEEnable = true;
-FastME = false;
+FMEEnable = false;
+FastME = true;
 
 if(VBSEnable == true)
     j = j-1;
