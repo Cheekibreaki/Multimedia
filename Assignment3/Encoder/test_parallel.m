@@ -10,11 +10,11 @@ decodedFile = '../Outputs/decoded_Y.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 20;                 % Number of frames to process
-searchRange = 4;                 % Search range r = 1,4, and 8
+searchRange = 1;                 % Search range r = 1,4, and 8
 j = 4;
-VBSEnable = true;
+VBSEnable = false;
 FMEEnable = false;
-FastME = true;
+FastME = false;
 
 if(VBSEnable == true)
     j = j-1;
@@ -22,7 +22,7 @@ end
 
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
-I_Period = 10; 
+I_Period = 8; 
 nRefFrames = 4;                 % Can take value from 1 to 4
 
 QPs = [1, 2, 4, 7, 10];
@@ -47,9 +47,9 @@ parpool(coreCount);
     configs(3).mode = 2;
     configs(3).name = 'Mode 2';
 
-    % % Mode 3 
-    % configs(4).mode = 3;
-    % configs(4).name = 'Mode 3';
+    % Mode 3 
+    configs(4).mode = 3;
+    configs(4).name = 'Mode 3';
 
     % Initialize results storage
     results = struct();
@@ -85,7 +85,9 @@ parpool(coreCount);
             if configs(c).mode == 1
                 %for mode 1 
                 encoder_mode1(referenceFile, paddedOutputFile, numFrames, paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames, lambdas(qp_idx), VBSEnable, FMEEnable, FastME, configs(c).mode);
-            else
+            elseif configs(c).mode == 3
+                encoder_mode3(referenceFile, paddedOutputFile, numFrames, paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames, lambdas(qp_idx), VBSEnable, FMEEnable, FastME, configs(c).mode);
+            else    
                 %for mode 0 and mode 2
                 encoder(referenceFile, paddedOutputFile, numFrames, paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames, lambdas(qp_idx), VBSEnable, FMEEnable, FastME,configs(c).mode);
             end

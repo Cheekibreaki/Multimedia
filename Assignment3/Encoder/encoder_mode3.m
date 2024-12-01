@@ -74,16 +74,18 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                 else
                     fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 2);
                     referenceFrame = spmdReceive(2);
+                    if FMEEnable
+                        referenceFrame = interpolateFrame(referenceFrame);
+                    end
                     fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 2);
                     referenceFrames = {referenceFrame};
+                    
                 end
             end
 
             if spmdIndex ==2
-                fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
-                %referenceFrame = spmdReceive(1);
                 referenceFrame = spmdReceive(1);
-                fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                fprintf('Frame start 1:Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                 referenceFrames = {referenceFrame};
             end
 
@@ -116,7 +118,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                         for blockY = 1:2:numBlocksY
                              %dummy receive to prevent blocking worker 1
                            if spmdIndex == 2
-                                if blockY ~= numBlocksX
+                                if blockY ~= numBlocksY-1
                                     fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                                     referenceFrame = spmdReceive(1);
                                     fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
@@ -133,7 +135,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                                 % VBS split estimation
                                 [quantized_residualBlock_split, approximatedReconstructed_block_split, approximatedPredictedFrame_split, predictionModes_split, approximatedReconstructedFrame_split] = ...
                                     VBS_split_estimation(currentFrame, approximatedPredictedFrame, currPredictionModes, approximatedReconstructedFrame, ...
-                                    blockY, blockX, blockSize, dct_blockSize, baseQP, numBlocksY, numBlocksX);
+                                    blockY, blockX, blockSize, dct_blockSize, QP, numBlocksY, numBlocksX);
                     
                                 % VBS large estimation
                                 [quantized_residualBlock_large, approximatedReconstructed_block_large, approximatedPredictedFrame_large, predictionModes_large, approximatedReconstructedFrame_large] = ...
@@ -193,6 +195,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                              
                             if spmdIndex == 1
                                 if frameIdx ~= numFrames
+                                    fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 2);
                                     spmdSend(approximatedReconstructedFrame,2)
                                 end
                             end
@@ -201,9 +204,24 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                      
                    if spmdIndex == 2
                        if frameIdx ~= numFrames
+                           fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 1);
                            spmdSend(approximatedReconstructedFrame, 1);
                        end    
                    end
+
+                   % if spmdIndex == 2
+                   %     msg = spmdReceive(1);
+                   % end
+
+                   % Since worker 1 will finish scanning frame early than worker 2,
+                   % continue to send to avoid deadlock
+                   % if spmdIndex == 1
+                   %     if frameIdx ~= numFrames
+                   %          spmdSend(approximatedReconstructedFrame, 2);
+                   %          spmdSend(approximatedReconstructedFrame, 2);
+                   %     end
+                   % end
+
 
                    MDiffModes = currPredictionModes;
                    reconstructedFrame = approximatedReconstructedFrame;
@@ -218,6 +236,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     for y = 1:blockSize:height
                         %dummy receive to prevent blocking worker 1
                        if spmdIndex == 2
+                           
                             if y ~= height - blockSize + 1  % Only receive if not at the last row
                                 fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                                 referenceFrame = spmdReceive(1);
@@ -268,6 +287,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                         end
                         if spmdIndex == 1
                             if frameIdx ~= numFrames
+                                fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 2);
                                 spmdSend(approximatedReconstructedFrame,2)
                             end
                         end
@@ -275,9 +295,24 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                    
                    if spmdIndex == 2
                        if frameIdx ~= numFrames
+                           fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 1);
                            spmdSend(approximatedReconstructedFrame, 1);
                        end    
                    end
+
+                   % if spmdIndex == 2
+                   %     msg = spmdReceive(1);
+                   % end
+
+                   % Since worker 1 will finish scanning frame early than worker 2,
+                   % continue to send to avoid deadlock
+                   % if spmdIndex == 1
+                   %     if frameIdx ~= numFrames
+                   %          spmdSend(approximatedReconstructedFrame, 2);
+                   %          spmdSend(approximatedReconstructedFrame, 2);
+                   %     end
+                   % end
+
                    reconstructedFrame = approximatedReconstructedFrame;
                    predictedFrame = approximatedPredictedFrame;
                    MDiffModes = diffEncoding(currPredictionModes,'modes');
@@ -320,7 +355,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     for blockY = 1:2:numBlocksY
                         previous_motion_vector_block = zeros(1, 1, 3);
                          if spmdIndex == 2
-                            if blockY ~= numBlocksX
+                            if blockY ~= numBlocksY -1
                                 fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                                 referenceFrame = spmdReceive(1);
                                 fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
@@ -336,6 +371,8 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             currentBlockSize = blockSize * 2;
                             rowOffset = (blockY - 1) * blockSize + 1;
                             colOffset = (blockX - 1) * blockSize + 1;
+                            actualBlockHeight = min(2 * blockSize, height - rowOffset + 1);
+                            actualBlockWidth = min(2 * blockSize, width - colOffset + 1);
                 
                             % Extract the current block from the current frame
                             currentBlock = currentFrame(rowOffset:rowOffset + currentBlockSize - 1, ...
@@ -345,11 +382,10 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             
                             [motionVector_block_large, total_minMAE_large] = compute_motionVector_block(currentBlock, currentBlockSize, referenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block, true, FMEEnable, FastME);
                             [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, referenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block,  false, FMEEnable, FastME);
-                            
+
                             % Compute predicted frames for large and split blocks
                             predictedFrame_block_large = compute_predictedFrame_block(referenceFrames, motionVector_block_large, rowOffset, colOffset, blockSize, FMEEnable);
                             predictedFrame_block_split = compute_predictedFrame_block(referenceFrames, motionVector_block_split, rowOffset, colOffset, blockSize, FMEEnable);
-                            
 
                              % Compute residuals
                             Residuals_block_large = double(currentBlock) - double(predictedFrame_block_large);
@@ -409,8 +445,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                                 vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 0;
                                 previous_motion_vector_block = previous_motion_vector_block_large;
                                 approximatedReconstructedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = reconstructed_large;
-                                approximatedPredictedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = predictedFrame_block_large(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1);
-                                
+                                approximatedPredictedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = predictedFrame_block_large;
 
                             else
                                 motionVector_block = motionVector_block_split;
@@ -418,18 +453,18 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                                 vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 1;
                                 previous_motion_vector_block = previous_motion_vector_block_split;
                                 approximatedReconstructedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = reconstructed_split;
-                                approximatedPredictedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = predictedFrame_block_split(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1);
-
+                                approximatedPredictedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = predictedFrame_block_split;
                             end
                 
                             % Store the motion vectors in the corresponding positions
                             motionVectors(blockY:blockY+1, blockX:blockX+1, :) = motionVector_block;
 
-                            totalMAE = totalMAE + minMAE;
+                            totalMAE = totalMAE + total_minMAE;
                         end
 
                         if spmdIndex == 1
                             if frameIdx ~= numFrames
+                                fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 2);
                                 spmdSend(approximatedReconstructedFrame,2)
                             end
                         end
@@ -438,10 +473,11 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
 
                     if spmdIndex == 2
                        if frameIdx ~= numFrames
+                           fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 1);
                            spmdSend(approximatedReconstructedFrame, 1);
                        end    
                     end
-                
+
                     % Calculate the average MAE across all blocks
                     avgMAE = totalMAE / (numBlocksX * numBlocksY /4);
                     
@@ -450,6 +486,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     reconstructedFrame = approximatedReconstructedFrame;
                     Residuals = double(currentFrame) - double(predictedFrame);    
                 else
+                    fprintf('Worker %d processing a P frame %d \n', spmdIndex, frameIdx);
                     if spmdIndex == 1
                         referenceFrames = {referenceFrame};
                     end
@@ -467,7 +504,9 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                         predictedMV = [0,0];
                         if spmdIndex == 2
                             if row ~= height - blockSize + 1  % Only receive if not at the last row
+                                fprintf('Worker %d waiting for reference frame for %d\n', spmdIndex, frameIdx);
                                 referenceFrame = spmdReceive(1);
+                                fprintf('Worker %d received reference frame for %d\n', spmdIndex, frameIdx);
                                 if FMEEnable
                                     referenceFrame = interpolateFrame(referenceFrame);
                                 end
@@ -477,7 +516,6 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                         for col = 1:blockSize:width
                             % Extract the current block from the current frame
                             currentBlock = currentFrame(row:row+blockSize-1, col:col+blockSize-1);
-                
                             % Initialize variables for the best match
                             bestVector = [0, 0];
                             bestRefIdx = 0;
@@ -554,8 +592,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             approximated_residualBlock = invquantization(quantized_block,dct_blockSize,blockSize,blockSize,QP);
                             approximatedReconstructedBlock = approximated_residualBlock + refBlock;
                             approximatedReconstructedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,approximatedReconstructedBlock)));
-                            
-                            
+             
                             totalMAE = totalMAE + minMAE;
 
                             
@@ -566,7 +603,6 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                                 spmdSend(approximatedReconstructedFrame,2)
                             end
                         end
-
                     end
                 
                     % Calculate the average MAE across all blocks
@@ -576,9 +612,11 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
 
                     if spmdIndex == 2
                        if frameIdx ~= numFrames
+                           fprintf('Worker %d sending frame %d to worker 1\n', spmdIndex, frameIdx);
                            spmdSend(approximatedReconstructedFrame, 1);
                        end    
                     end
+          
                     predictedFrame = approximatedPredictedFrame;
                     Residuals = double(currentFrame) - double(predictedFrame);    
                    
@@ -868,8 +906,7 @@ end
 
 
 
-
-function predictedBlock = compute_predictedFrame_block(referenceFrames, motionVector_block, rowOffset, colOffset, blockSize)
+function predictedBlock = compute_predictedFrame_block(referenceFrames, motionVector_block, rowOffset, colOffset, blockSize, FMEEnable)
     % This function computes the predicted block from the reference frames based on motion vectors.
     %
     % Parameters:
@@ -899,7 +936,8 @@ function predictedBlock = compute_predictedFrame_block(referenceFrames, motionVe
             
             % Get the corresponding reference frame
             referenceFrame = referenceFrames{refIdx};
-            
+            [height, width] = size(referenceFrame); 
+            % fprintf('size of referenceFrames %d,%d\n',height,width);
             % Calculate the position of the reference sub-block based on the motion vector
             refRowStart = subBlockRowOffset + mvY;
             refColStart = subBlockColOffset + mvX;
