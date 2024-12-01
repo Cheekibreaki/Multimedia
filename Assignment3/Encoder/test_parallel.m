@@ -13,8 +13,8 @@ numFrames = 10;                 % Number of frames to process
 searchRange = 1;                 % Search range r = 1,4, and 8
 j = 4;
 VBSEnable = false;
-FMEEnable = true;
-FastME = true;
+FMEEnable = false;
+FastME = false;
 
 if(VBSEnable == true)
     j = j-1;
@@ -22,7 +22,7 @@ end
 
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
-I_Period = 1; 
+I_Period = 8; 
 nRefFrames = 1;                 % Can take value from 1 to 4
 
 QPs = [1, 2, 4, 7, 10];

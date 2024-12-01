@@ -7,6 +7,7 @@ outputFile = '../Outputs/Y_only.yuv'; % File to store Y-only components
 paddedOutputFile = '../Outputs/padded_Y.yuv'; % File to store padded Y components
 referenceFile = '../Outputs/referenceFrames.yuv';
 decodedFile = '../Outputs/decoded_Y.yuv';
+predictedFile = '../Outputs/predictedFrames.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 10;                 % Number of frames to process
@@ -67,7 +68,7 @@ else
 end
 [total_byte,bytes_list] = decoder(decodedFile,mode);
 % decoder
- compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
+ compareYUVFrames(predictedFile, outputFile, decodedFile, width, height, numFrames);
 % 
 % 
 % 
