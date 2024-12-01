@@ -15,8 +15,8 @@ QP = 4;
 j = 4;
 VBSEnable = false;
 FMEEnable = false;
-FastME = false;
-mode = 2;
+FastME = true;
+mode =3;
 
 if(VBSEnable == true)
     j = j-1;
@@ -25,7 +25,7 @@ end
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
 I_Period = 8; 
-    nRefFrames = 1;                 % Can take value from 1 to 4
+nRefFrames = 1;                 % Can take value from 1 to 4
 
 function lambda = get_lambda_for_qp(QP)
    if QP == 1

@@ -105,7 +105,9 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
                 else
                     [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
                 end
+                
                 MDiffMV = currMotionVectors;
+              
             else
                 if mode == 2
                     [currMotionVectors, avgMAE] = motionEstimation_Mode2(currentFrame, validRefFrames,validInterpolatedRefFrames, blockSize, searchRange,FMEEnable, FastME);

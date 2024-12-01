@@ -55,6 +55,7 @@ function [motionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode2(current
                     [motionVector_block_large, total_minMAE_large] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block, true, FMEEnable, FastME);
                     [motionVector_block_split, total_minMAE_split] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block,  false, FMEEnable, FastME);
                     
+                    
                       % Compute predicted frames for large and split blocks
                     predictedFrame_block_large = compute_predictedFrame_block(referenceFrames,interpolatedReferenceFrames, motionVector_block_large, rowOffset, colOffset, blockSize,FMEEnable);
                     predictedFrame_block_split = compute_predictedFrame_block(referenceFrames,interpolatedReferenceFrames, motionVector_block_split, rowOffset, colOffset, blockSize,FMEEnable);
