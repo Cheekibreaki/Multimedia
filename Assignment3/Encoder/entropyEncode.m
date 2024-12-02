@@ -71,7 +71,8 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
         end
 
     elseif frame_type == 1
-
+       % intra prediction is disabled for mode 1
+       if mode ~= 1
         if exist('vbs_matrix', 'var')
             [rows, cols] = size(vbs_matrix);
             resultpredictionMode_block_1d = [];
@@ -114,13 +115,14 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
             predicitonModes1d = zigzag(predicitonModes2d);
             encodedPredicitonModes = exp_golomb_encode(predicitonModes1d); 
         end
+      end
     end
-
         residues1d = zigzag(residues2d);
         residuesRLE = rle_encode(residues1d); 
         encodedResidues = exp_golomb_encode(residuesRLE);
 
     % Prepend the frame type to the encoded data (as a header)
+    % For mode 1,encodedPredictionMods only contains the frameTypeHeader
     encodedPredicitonModes = [frameTypeHeader, encodedPredicitonModes];
     encodedMotionVector = [frameTypeHeader, encodedMotionVector];
    

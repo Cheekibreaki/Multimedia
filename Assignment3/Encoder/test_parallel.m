@@ -9,7 +9,7 @@ referenceFile = '../Outputs/referenceFrames.yuv';
 decodedFile = '../Outputs/decoded_Y.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
-numFrames = 10;                 % Number of frames to process
+numFrames = 20;                 % Number of frames to process
 searchRange = 1;                 % Search range r = 1,4, and 8
 j = 4;
 VBSEnable = true;

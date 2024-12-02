@@ -77,13 +77,20 @@ function [total_bytes,bytes_list] = decoder(filename,mode)
             pFrameCounter = 0;  % Reset the P-frame counter
             [nonimportant1,predictionModes,quantizedResiduals,vbs_matrix] = entropyDecode(mode, isIFrame, [], encodedMDiff, encodedResiduals, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight, VBSEnable);
            
+            if mode ~= 1
+                if VBSEnable
+                    compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
+                    intraCompFrame = vbs_intraCompensation(predictionModes, compresiduals, blockSize,vbs_matrix);
+                else
+                    compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
+                    intraCompFrame = intraCompensation(predictionModes, compresiduals, blockSize);
+                end
             
-            if VBSEnable
-                compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
-                intraCompFrame = vbs_intraCompensation(predictionModes, compresiduals, blockSize,vbs_matrix);
             else
+                % For mode 1, intra is disabled, no prediction info is available
+                predictedFrame = 128 * ones(height, width, 'uint8');
                 compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
-                intraCompFrame = intraCompensation(predictionModes, compresiduals, blockSize);
+                intraCompFrame = double(predictedFrame) + double(compresiduals);
             end
 
             % Add the approximated residuals to the predicted frame to reconstruct

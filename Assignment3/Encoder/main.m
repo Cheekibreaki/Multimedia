@@ -11,13 +11,13 @@ predictedFile = '../Outputs/predictedFrames.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 10;                 % Number of frames to process
-searchRange = 4;                 % Search range r = 1,4, and 8
+searchRange = 1;                 % Search range r = 1,4, and 8
 QP = 4;
 j = 4;
-VBSEnable = true;
-FMEEnable = true;
+VBSEnable = false;
+FMEEnable = false;
 FastME = true;
-mode =2;
+mode =3;
 
 if(VBSEnable == true)
     j = j-1;
@@ -68,7 +68,7 @@ else
 end
 [total_byte,bytes_list] = decoder(decodedFile,mode);
 % decoder
- compareYUVFrames(predictedFile, outputFile, decodedFile, width, height, numFrames);
+ compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
 % 
 % 
 % 
