@@ -1,4 +1,4 @@
-function [motionVectors, avgMAE, vbs_matrix] = vbs_motionEstimation(currentFrame, originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize, QP, lambda, FMEEnable, FastME)
+function [motionVectors, avgMAE, vbs_matrix] = vbs_motionEstimation(mode, currentFrame, originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize, QP, lambda, FMEEnable, FastME)
     % Get the dimensions of the frame
     [height, width] = size(currentFrame);
 
@@ -68,8 +68,8 @@ function [motionVectors, avgMAE, vbs_matrix] = vbs_motionEstimation(currentFrame
             [MDiffMV_split, previous_motion_vector_block_split] = diffEncoding_block(motionVector_block_split, 'mv', previous_motion_vector_block);
 
             % Entropy encoding
-            [encodedMDiff_large, ~, encodedResidues_large] = entropyEncode(false, MDiffMV_large, [], quantizedResiduals_large);
-            [encodedMDiff_split, ~, encodedResidues_split] = entropyEncode(false, MDiffMV_split, [], quantizedResiduals_split);
+            [encodedMDiff_large, ~, encodedResidues_large] = entropyEncode(mode, false, MDiffMV_large, [], quantizedResiduals_large);
+            [encodedMDiff_split, ~, encodedResidues_split] = entropyEncode(mode, false, MDiffMV_split, [], quantizedResiduals_split);
 
             % Calculate rate (R) for large and split blocks
             total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);

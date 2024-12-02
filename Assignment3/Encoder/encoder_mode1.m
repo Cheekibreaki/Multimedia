@@ -60,8 +60,7 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
             validInterpolatedRefFrames = interpolatedReferenceFrames(1:min(pFrameCounter + 1, nRefFrames));
             % Motion estimation
             if VBSEnable
-                % Should use blockSize/2 here, same of motion compensation?
-                [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode1(currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
+                [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode1(mode,currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
                 MDiffMV = currMotionVectors;
             else
                 [currMotionVectors, avgMAE] = motionEstimation_Mode1(currentFrame, validRefFrames,validInterpolatedRefFrames, blockSize, searchRange,FMEEnable, FastME);
@@ -79,10 +78,10 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
 
             if VBSEnable
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
-                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
+                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(mode,isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
             else
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
+                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(mode,isIFrame, MDiffMV, [], quantizedResiduals);
             end
 
             motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);

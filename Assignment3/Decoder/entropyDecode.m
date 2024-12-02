@@ -1,4 +1,4 @@
-function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,reconstructed_vbs_matrix] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight,VBSEnable)
+function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,reconstructed_vbs_matrix] = entropyDecode(mode, frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight,VBSEnable)
     
     %switch the order of width & height
     temp = mvwidth;
@@ -44,7 +44,13 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                         idx = idx + 12;
                         motionVector2d = invzigzag(motionVector1d, 2,2 * 3);
                         motion_block = reshape_2d_to_3d(motionVector2d, 2, 2, 3);
-                        [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
+                        if mode == 1
+                            %disable diff decoding
+                            [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
+                            previous_motion_vector_block = zeros(1,1,3);
+                        else
+                            [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
+                        end
                         decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
                         reconstructed_vbs_matrix(row:row+1, col:col+1) = 1;
                     elseif prefix == 0
@@ -57,8 +63,14 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                         
                         motion_block = zeros(2,2,3); 
                         motion_block(1,1,:) = top_left_block;
-    
-                        [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
+                        if mode == 1
+                            %disable diff decoding
+                             [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
+                              previous_motion_vector_block = zeros(1,1,3);
+                             
+                        else
+                            [motion_block,previous_motion_vector_block] = diffDecoding_block(motion_block,'mv',previous_motion_vector_block);
+                        end
                         decodedMotionVector3d(row:row+1, col:col+1, :) = motion_block;
                         reconstructed_vbs_matrix(row:row+1, col:col+1) = 0;
                     else

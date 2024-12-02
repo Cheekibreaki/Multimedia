@@ -75,9 +75,9 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
            pFrameCounter = 0;
            if VBSEnable
                if mode == 2
-                    [predictedFrame, currPredictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction_Mode2(currentFrame, blockSize,dct_blockSize,QP,lambda);
+                    [predictedFrame, currPredictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction_Mode2(mode,currentFrame, blockSize,dct_blockSize,QP,lambda);
                else
-                    [predictedFrame, currPredictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction(currentFrame, blockSize,dct_blockSize,QP,lambda);
+                    [predictedFrame, currPredictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction(mode,currentFrame, blockSize,dct_blockSize,QP,lambda);
                end
                MDiffModes = currPredictionModes;
            else
@@ -101,9 +101,9 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             % Motion estimation
             if VBSEnable
                 if mode == 2
-                    [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode2(currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
+                    [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode2(mode,currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
                 else
-                    [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
+                    [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation(mode,currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
                 end
                 
                 MDiffMV = currMotionVectors;
@@ -130,10 +130,10 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         if isIFrame
            if VBSEnable
                quantizedResiduals = residualFrame;
-                [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
+                [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(mode,isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
            else
                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-               [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
+               [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(mode,isIFrame, [], MDiffModes, quantizedResiduals);
            end
 
             save(sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx), 'encodedMDiff');
@@ -153,10 +153,10 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
 
             if VBSEnable
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
-                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
+                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(mode,isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
             else
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
+                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(mode,isIFrame, MDiffMV, [], quantizedResiduals);
             end
 
             motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);

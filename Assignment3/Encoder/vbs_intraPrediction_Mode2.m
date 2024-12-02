@@ -1,5 +1,5 @@
 function [approximatedPredictedFrame, predictionModes, vbs_matrix, residualFrame] = ...
-    vbs_intraPrediction_Mode2(currentFrame, blockSize, dct_blockSize, baseQP, lambda)
+    vbs_intraPrediction_Mode2(mode, currentFrame, blockSize, dct_blockSize, baseQP, lambda)
     % VBS Intra Prediction with spmd-based Parallelism
     % Each worker processes alternating rows (odd/even). This ensures that
     % before processing a block, the necessary data from previous row
@@ -93,8 +93,8 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix, residualFrame
                   % Compute SAD for reconstructed_large
                     SAD_large = sum(sum(abs(double(currentBlock) - double(approximatedReconstructed_block_large))));
                     
-                     [encodedMDiff_large, encodedResidues_large] = entropyEncode(true, [], predictionModes_large(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_large);
-                     [encodedMDiff_split, encodedResidues_split] = entropyEncode(true, [], predictionModes_split(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_split);
+                     [encodedMDiff_large, encodedResidues_large] = entropyEncode(mode, true, [], predictionModes_large(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_large);
+                     [encodedMDiff_split, encodedResidues_split] = entropyEncode(mode, true, [], predictionModes_split(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_split);
         
                     % Rate-Distortion Cost Calculation
                     % Calculate rate (R) for large and split blocks
