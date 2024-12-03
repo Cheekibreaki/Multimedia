@@ -15,8 +15,6 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
     params.FMEEnable = FMEEnable;
     params.FastME = FastME;
 
-    % There is no intra prediction for parallelMode 1
-    isIFrame = false;
     % Save the parameters to a MAT-file
     save('../Outputs/headerfile.mat', 'params');
 

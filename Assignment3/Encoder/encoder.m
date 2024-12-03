@@ -181,6 +181,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
 
         fwrite(yuvFile, reconstructedFrame', 'uint8');
+        
 
         % Update the reference frames using a sliding window
         referenceFrames = [{reconstructedFrame}, referenceFrames(1:nRefFrames - 1)];
