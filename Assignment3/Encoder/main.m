@@ -11,13 +11,13 @@ predictedFile = '../Outputs/predictedFrames.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 10;                 % Number of frames to process
-searchRange = 1;                 % Search range r = 1,4, and 8
+searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 4;
 j = 4;
-VBSEnable = false;
-FMEEnable = false;
+VBSEnable = true;
+FMEEnable = true;
 FastME = true;
-mode =3;
+mode = 3;
 
 if(VBSEnable == true)
     j = j-1;
@@ -25,7 +25,7 @@ end
 
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
-I_Period = 8; 
+I_Period = 10; 
 nRefFrames = 1;                 % Can take value from 1 to 4
 
 function lambda = get_lambda_for_qp(QP)

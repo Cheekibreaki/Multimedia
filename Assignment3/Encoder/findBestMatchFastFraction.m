@@ -77,6 +77,11 @@ function [bestVector, minMAE, bestL1Norm] = findBestMatchFastFraction(currentBlo
             refRow = row + yOffset;
             refCol = col + xOffset;
 
+            % Added condition to ensure the motion vector stays within the search range 
+            if abs(yOffset) > 2*searchRange || abs(xOffset) > 2*searchRange
+                continue; % Skip this candidate if it exceeds the allowed range
+            end
+
             % Check if the reference block is within bounds
             if refRow > 0 && refRow + 2 * (blockSize -1)<= heightBoundry && refCol > 0 && refCol + 2 * (blockSize -1)<= widthBoundry
                 % Extract the reference block

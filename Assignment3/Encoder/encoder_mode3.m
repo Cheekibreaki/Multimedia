@@ -231,7 +231,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                
                     approximatedPredictedFrame = zeros(size(currentFrame), 'double');
                     currPredictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
-                    approximatedReconstructedFrame(1:height,1:width) = 255 * ones(size(currentFrame), 'double');
+                    approximatedReconstructedFrame(1:height,1:width) = 128 * ones(size(currentFrame), 'double');
                     
                     
                     for y = 1:blockSize:height
@@ -301,19 +301,6 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                        end    
                    end
 
-                   % if spmdIndex == 2
-                   %     msg = spmdReceive(1);
-                   % end
-
-                   % Since worker 1 will finish scanning frame early than worker 2,
-                   % continue to send to avoid deadlock
-                   % if spmdIndex == 1
-                   %     if frameIdx ~= numFrames
-                   %          spmdSend(approximatedReconstructedFrame, 2);
-                   %          spmdSend(approximatedReconstructedFrame, 2);
-                   %     end
-                   % end
-
                    reconstructedFrame = approximatedReconstructedFrame;
                    predictedFrame = approximatedPredictedFrame;
                    MDiffModes = diffEncoding(currPredictionModes,'modes');
@@ -323,10 +310,10 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
               
                if VBSEnable
                    quantizedResiduals = residualFrame;
-                    [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(mode, isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
+                    [~,encodedMDiff,encodedResiduals] = entropyEncode(mode, isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
                else
                    quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                   [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(mode, isIFrame, [], MDiffModes, quantizedResiduals);
+                   [~,encodedMDiff,encodedResiduals] = entropyEncode(mode, isIFrame, [], MDiffModes, quantizedResiduals);
                end
     
           
@@ -348,7 +335,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     motionVectors = zeros(numBlocksY, numBlocksX, 3);  % Stores motion vector for each block.
                     vbs_matrix = -1 * ones(numBlocksY, numBlocksX);
                     totalMAE = 0;  % To keep track of the total MAE across all blocks
-                    approximatedReconstructedFrame(1:height,1:width) = 255 * ones(size(currentFrame), 'double');
+                    approximatedReconstructedFrame(1:height,1:width) = 128 * ones(size(currentFrame), 'double');
                     approximatedPredictedFrame = zeros(size(currentFrame), 'double');
                     
                     if spmdIndex == 1
@@ -461,7 +448,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
 
                             % Store the motion vectors in the corresponding positions
                             motionVectors(blockY:blockY+1, blockX:blockX+1, :) = motionVector_block;
-
+                            
                             totalMAE = totalMAE + total_minMAE;
                         end
 
@@ -495,7 +482,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     if spmdIndex == 1
                         referenceFrames = {referenceFrame};
                     end
-                    approximatedReconstructedFrame(1:height,1:width) = 255 * ones(size(currentFrame), 'double');
+                    approximatedReconstructedFrame(1:height,1:width) = 128 * ones(size(currentFrame), 'double');
                     approximatedPredictedFrame = zeros(size(currentFrame), 'double');
                     % Initialize the motion vector array (for storing motion vectors for each block)
                     numBlocksX = width / blockSize; 
@@ -587,8 +574,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             
                             
                             % Place the reference block into the predicted frame
-                            approximatedPredictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = refBlock;
-                            %double(max(0,min(255,refBlock)));
+                            approximatedPredictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,refBlock)));
                             
 
                             % Compute residuals
@@ -596,8 +582,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             quantized_block = quantization(residuals_block, dct_blockSize, blockSize, blockSize, QP);
                             approximated_residualBlock = invquantization(quantized_block,dct_blockSize,blockSize,blockSize,QP);
                             approximatedReconstructedBlock = approximated_residualBlock + refBlock;
-                            approximatedReconstructedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = approximatedReconstructedBlock;
-                            %double(max(0,min(255,approximatedReconstructedBlock)));
+                            approximatedReconstructedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,approximatedReconstructedBlock)));
              
                             totalMAE = totalMAE + minMAE;
 

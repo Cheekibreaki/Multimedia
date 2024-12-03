@@ -10,7 +10,7 @@ decodedFile = '../Outputs/decoded_Y.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 20;                 % Number of frames to process
-searchRange = 1;                 % Search range r = 1,4, and 8
+searchRange = 16;                 
 j = 4;
 VBSEnable = true;
 FMEEnable = true;
