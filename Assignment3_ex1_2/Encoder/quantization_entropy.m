@@ -1,4 +1,4 @@
-function [quantizedResiduals] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
+function [quantizedResiduals,final_encodedResidues] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
     quantizedResiduals = zeros(size(residuals));
     if exist('vbs_matrix', 'var') && ~isempty(vbs_matrix)
     [vbsRows, vbsCols] = size(vbs_matrix);
@@ -14,90 +14,93 @@ function [quantizedResiduals] = quantization_entropy(residuals, dct_blockSize, w
 
 
 
-
+    final_encodedResidues = []
     row_bits_used = per_block_row_budget;
     % Iterate over the vbs_matrix in steps of 2 to process 2x2 blocks
-    for blockY = 1:2:vbsRows
-        if RCflag
-            next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
-            baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
-            row_bits_used = 0;
-        end
-        for blockX = 1:2:vbsCols
-            % Extract the 2x2 block from vbs_matrix
-            vbs_block = vbs_matrix(blockY:blockY+1, blockX:blockX+1);
-
-            % Determine the starting position in the residuals
-            rowOffset = (blockY - 1) * dct_blockSize + 1;
-            colOffset = (blockX - 1) * dct_blockSize + 1;
-
-            % Calculate the actual block size, accounting for image boundaries
-            actualBlockHeight = min(2 * dct_blockSize, height - rowOffset + 1);
-            actualBlockWidth = min(2 * dct_blockSize, width - colOffset + 1);
-
-            % Check if the vbs_block is all ones or contains zeros
-            if all(vbs_block(:) == 0)
-                % Process as a large block
-                % Extract the residual block
-                block = residuals(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1);
-
-                % Apply DCT to the block
-                dctBlock = dct2(double(block));
-
-                % Create the quantization matrix
-                Q = createQMatrix(size(dctBlock), baseQP);
-
-                % Quantize the DCT coefficients
-                quantizedBlock = round(dctBlock ./ Q);
-
-                % Store the quantized block
-                quantizedResiduals(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1) = quantizedBlock;
-            else
-                % Process each sub-block separately
-                for subBlockY = 0:1
-                    for subBlockX = 0:1
-                        % Calculate sub-block offsets
-                        subRowOffset = rowOffset + subBlockY * dct_blockSize;
-                        subColOffset = colOffset + subBlockX * dct_blockSize;
-
-                        % Check if within image boundaries
-                        if subRowOffset > height || subColOffset > width
-                            continue;
+        for blockY = 1:2:vbsRows
+            if RCflag
+                next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
+                baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
+                row_bits_used = 0;
+            end
+            for blockX = 1:2:vbsCols
+                % Extract the 2x2 block from vbs_matrix
+                vbs_block = vbs_matrix(blockY:blockY+1, blockX:blockX+1);
+    
+                % Determine the starting position in the residuals
+                rowOffset = (blockY - 1) * dct_blockSize + 1;
+                colOffset = (blockX - 1) * dct_blockSize + 1;
+    
+                % Calculate the actual block size, accounting for image boundaries
+                actualBlockHeight = min(2 * dct_blockSize, height - rowOffset + 1);
+                actualBlockWidth = min(2 * dct_blockSize, width - colOffset + 1);
+    
+                % Check if the vbs_block is all ones or contains zeros
+                if all(vbs_block(:) == 0)
+                    % Process as a large block
+                    % Extract the residual block
+                    block = residuals(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1);
+    
+                    % Apply DCT to the block
+                    dctBlock = dct2(double(block));
+    
+                    % Create the quantization matrix
+                    Q = createQMatrix(size(dctBlock), baseQP);
+    
+                    % Quantize the DCT coefficients
+                    quantizedBlock = round(dctBlock ./ Q);
+    
+                    % Store the quantized block
+                    quantizedResiduals(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1) = quantizedBlock;
+                else
+                    % Process each sub-block separately
+                    for subBlockY = 0:1
+                        for subBlockX = 0:1
+                            % Calculate sub-block offsets
+                            subRowOffset = rowOffset + subBlockY * dct_blockSize;
+                            subColOffset = colOffset + subBlockX * dct_blockSize;
+    
+                            % Check if within image boundaries
+                            if subRowOffset > height || subColOffset > width
+                                continue;
+                            end
+    
+                            % Calculate actual sub-block size
+                            actualSubBlockHeight = min(dct_blockSize, height - subRowOffset + 1);
+                            actualSubBlockWidth = min(dct_blockSize, width - subColOffset + 1);
+    
+                            % Extract the residual sub-block
+                            block = residuals(subRowOffset:subRowOffset+actualSubBlockHeight-1, subColOffset:subColOffset+actualSubBlockWidth-1);
+    
+                            % Apply DCT to the sub-block
+                            dctBlock = dct2(double(block));
+    
+                            % Create the quantization matrix
+                            Q = createQMatrix(size(dctBlock), baseQP -1);
+    
+                            % Quantize the DCT coefficients
+                            quantizedBlock = round(dctBlock ./ Q);
+    
+                            % Store the quantized sub-block
+                            quantizedResiduals(subRowOffset:subRowOffset+actualSubBlockHeight-1, subColOffset:subColOffset+actualSubBlockWidth-1) = quantizedBlock;
+    
                         end
-
-                        % Calculate actual sub-block size
-                        actualSubBlockHeight = min(dct_blockSize, height - subRowOffset + 1);
-                        actualSubBlockWidth = min(dct_blockSize, width - subColOffset + 1);
-
-                        % Extract the residual sub-block
-                        block = residuals(subRowOffset:subRowOffset+actualSubBlockHeight-1, subColOffset:subColOffset+actualSubBlockWidth-1);
-
-                        % Apply DCT to the sub-block
-                        dctBlock = dct2(double(block));
-
-                        % Create the quantization matrix
-                        Q = createQMatrix(size(dctBlock), baseQP -1);
-
-                        % Quantize the DCT coefficients
-                        quantizedBlock = round(dctBlock ./ Q);
-
-                        % Store the quantized sub-block
-                        quantizedResiduals(subRowOffset:subRowOffset+actualSubBlockHeight-1, subColOffset:subColOffset+actualSubBlockWidth-1) = quantizedBlock;
-
                     end
                 end
-            end
-            if RCflag
-                 % Flatten the quantized block using zigzag scan
-                quantizedBlock1d = zigzag(quantizedBlock);
-                residuesRLE = rle_encode(quantizedBlock1d); 
-                encodedResidues = exp_golomb_encode(residuesRLE);
-                encodedResidues_length = length(encodedResidues);
-                % Calculate bits used by this block
-                row_bits_used = row_bits_used + encodedResidues_length;
+                
+                        quantizedBlock1d = zigzag(quantizedBlock);
+                        residuesRLE = rle_encode(quantizedBlock1d); 
+                        encodedResidues = exp_golomb_encode(residuesRLE);
+                        encodedResidues_length = length(encodedResidues);
+                        % Calculate bits used by this block
+                    if RCflag
+                     % Flatten the quantized block using zigzag scan
+                        row_bits_used = row_bits_used + encodedResidues_length;
+                   
+                    end
+                    final_encodedResidues = [final_encodedResidues, encodedResidues];
             end
         end
-    end
     else
         quantizedResiduals = zeros(size(residuals));
         for row = 1:dct_blockSize:height
@@ -109,15 +112,16 @@ function [quantizedResiduals] = quantization_entropy(residuals, dct_blockSize, w
                 quantizedBlock = round(dctBlock ./ Q);
                 quantizedResiduals(row:row+dct_blockSize-1, col:col+dct_blockSize-1) = quantizedBlock;
             end
-            if RCflag
+            
                  % Flatten the quantized block using zigzag scan
                 quantizedBlock1d = zigzag(quantizedBlock);
                 residuesRLE = rle_encode(quantizedBlock1d); 
                 encodedResidues = exp_golomb_encode(residuesRLE);
-    
+            if RCflag
                 % Calculate bits used by this block
                 row_bits_used = bits_used + length(encodedResidues);
             end
+            final_encodedResidues = [final_encodedResidues, encodedResidues];
         end
     end
 end
@@ -187,32 +191,6 @@ function encoded = exp_golomb_encode(data)
 end
 
 
-function decoded = rle_decode(encoded,datalength)
-    % Decode data using a custom Run-Length Encoding (RLE) scheme
-    % Return a 1D array containing the decoded values
-    decoded = [];
-    i = 1;
-    
-    while i <= length(encoded)
-        if encoded(i) < 0
-            % Negative value indicates a run of non-zero values
-            non_zero_count = -encoded(i);
-            i = i + 1;
-            decoded = [decoded, encoded(i:i + non_zero_count - 1)];
-            i = i + non_zero_count;
-        elseif encoded(i) > 0
-            % Positive value indicates a run of zeros
-            zero_count = encoded(i);
-            
-            decoded = [decoded, zeros(1, zero_count)];
-            i = i + 1;
-        else
-            % Zero value in encoded data indicates an actual zero in the original data
-            decoded = [decoded, zeros(1, datalength-length(decoded))];
-            i = length(encoded) + 1;
-        end
-    end
-end
 
 
 function encoded = rle_encode(data)
@@ -268,15 +246,13 @@ function QP = findCorrectQP(per_block_row_budget, bitCountPerRow)
         end
     end
     % Check if per_block_row_budget is greater than or equal to the last element
-    if per_block_row_budget >= bitCountPerRow(end)
+    if per_block_row_budget <= bitCountPerRow(end)
         QP = length(bitCountPerRow) - 1; % Adjust for 0-based indexing
-        return;
+     
     end
     % If no match is found, return -1
     if(per_block_row_budget > bitCountPerRow(1))
         QP = 0;
-    else
-        QP = 9;
     end
 end
 

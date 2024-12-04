@@ -68,7 +68,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         else
             isIFrame = (mod(frameIdx - 1, I_Period) == 0);
         end
-         %isIFrame = false;
+        
         
         if isIFrame
            pFrameCounter = 0;
@@ -135,13 +135,13 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         else
            
             if VBSEnable
-                quantizedResiduals = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow,vbs_matrix); 
-                [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
+                [quantizedResiduals,encodedResidues] = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow,vbs_matrix); 
+                [encodedMDiff,nonimporatant1,nonimporatant2] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
                 
                 total_encodedResidues = total_encodedResidues + length(encodedResidues)
             else
-                quantizedResiduals = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow); 
-                [encodedMDiff,nonimporatant1,encodedResidues] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
+                [quantizedResiduals,encodedResidues]  = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow); 
+                [encodedMDiff,nonimporatant1,nonimporatant2] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
             end
 
             motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
@@ -172,8 +172,9 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
        
         
     end
+    
     avg_encodedResidues = total_encodedResidues/numFrames;
-    per_block_budget = avg_encodedResidues/(width*height/blockSize);
+    per_block_budget = avg_encodedResidues/((width*height)/(blockSize * blockSize));
 
     per_block_row_budget = per_block_budget * (width/blockSize);    % Close the file
     fclose(fid);

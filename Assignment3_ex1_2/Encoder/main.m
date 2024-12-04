@@ -9,10 +9,10 @@ referenceFile = '../Outputs/referenceFrames.yuv';
 decodedFile = '../Outputs/decoded_Y_foreman.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
-numFrames = 21;                 % Number of frames to process
+numFrames = 4;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 1;
-j = 5;
+j = 4;
 VBSEnable = true;
 FMEEnable = true;
 FastME = true;
@@ -28,10 +28,12 @@ I_Period = 8;
 nRefFrames = 4;                 % Can take value from 1 to 4
 
 targetBR = 1140480;
+%targetBR = 640480;
 fps = 30;
 %bitCountPerRow = [2112, 1520, 1256, 1156, 1076, 1056, 65, 32, 15, 7];
 % For p frame
 bitCountPerRow = [1989, 1592, 1216, 873, 507, 338, 162, 38, 21, 7];
+bitCountPerRow = 2*bitCountPerRow;
 function lambda = get_lambda_for_qp(QP)
    if QP == 1
             lambda = 0.02;
