@@ -9,12 +9,12 @@ referenceFile = '../Outputs/referenceFrames.yuv';
 decodedFile = '../Outputs/decoded_Y.yuv';
 width = 352;                     % Frame width
 height = 288;                    % Frame height
-numFrames = 10;                 % Number of frames to process
-searchRange = 1;                 % Search range r = 1,4, and 8
+numFrames = 20;                 % Number of frames to process
+searchRange = 16;                 
 j = 4;
-VBSEnable = false;
-FMEEnable = false;
-FastME = false;
+VBSEnable = true;
+FMEEnable = true;
+FastME = true;
 
 if(VBSEnable == true)
     j = j-1;
@@ -22,7 +22,7 @@ end
 
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
-I_Period = 8; 
+I_Period = 10; 
 nRefFrames = 1;                 % Can take value from 1 to 4
 
 QPs = [1, 2, 4, 7, 10];

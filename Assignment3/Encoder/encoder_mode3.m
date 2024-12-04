@@ -72,12 +72,12 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                         referenceFrames = {referenceFrame};
                     end
                 else
-                    fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 2);
+                    % fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 2);
                     referenceFrame = spmdReceive(2);
                     if FMEEnable
                         referenceFrame = interpolateFrame(referenceFrame);
                     end
-                    fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 2);
+                    % fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 2);
                     referenceFrames = {referenceFrame};
                     
                 end
@@ -85,7 +85,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
 
             if spmdIndex ==2
                 referenceFrame = spmdReceive(1);
-                fprintf('Frame start 1:Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                % fprintf('Frame start 1:Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                 referenceFrames = {referenceFrame};
             end
 
@@ -119,9 +119,9 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                              %dummy receive to prevent blocking worker 1
                            if spmdIndex == 2
                                 if blockY ~= numBlocksY-1
-                                    fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                    % fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                                     referenceFrame = spmdReceive(1);
-                                    fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                    % fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                                 end
                            end
                             for blockX = 1:2:numBlocksX
@@ -151,8 +151,8 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                                 % Placeholder for entropyEncode function (you need to implement this)
                                 % Assuming entropyEncode returns encoded data and its length
                                 non_important1 = [];
-                                [encodedMDiff_large, encodedResidues_large] = entropyEncode(true, non_important1,predictionModes_large(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_large);
-                                [encodedMDiff_split, encodedResidues_split] = entropyEncode(true, non_important1,predictionModes_split(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_split);
+                                [encodedMDiff_large, encodedResidues_large] = entropyEncode(mode, true, non_important1,predictionModes_large(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_large);
+                                [encodedMDiff_split, encodedResidues_split] = entropyEncode(mode, true, non_important1,predictionModes_split(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_split);
                     
                                 % Calculate rate (R) for large and split blocks
                                 total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);
@@ -195,7 +195,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                              
                             if spmdIndex == 1
                                 if frameIdx ~= numFrames
-                                    fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 2);
+                                    % fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 2);
                                     spmdSend(approximatedReconstructedFrame,2)
                                 end
                             end
@@ -204,7 +204,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                      
                    if spmdIndex == 2
                        if frameIdx ~= numFrames
-                           fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 1);
+                           % fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 1);
                            spmdSend(approximatedReconstructedFrame, 1);
                        end    
                    end
@@ -231,7 +231,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                
                     approximatedPredictedFrame = zeros(size(currentFrame), 'double');
                     currPredictionModes = int32(zeros(ceil(height/blockSize), ceil(width/blockSize)));
-                    approximatedReconstructedFrame(1:height,1:width) = zeros(size(currentFrame), 'double');
+                    approximatedReconstructedFrame(1:height,1:width) = 128 * ones(size(currentFrame), 'double');
                     
                     
                     for y = 1:blockSize:height
@@ -239,9 +239,9 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                        if spmdIndex == 2
                            
                             if y ~= height - blockSize + 1  % Only receive if not at the last row
-                                fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                % fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                                 referenceFrame = spmdReceive(1);
-                                fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                % fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                             end
                        end
                         for x = 1:blockSize:width
@@ -288,7 +288,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                         end
                         if spmdIndex == 1
                             if frameIdx ~= numFrames
-                                fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 2);
+                                % fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 2);
                                 spmdSend(approximatedReconstructedFrame,2)
                             end
                         end
@@ -296,23 +296,10 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                    
                    if spmdIndex == 2
                        if frameIdx ~= numFrames
-                           fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 1);
+                           % fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 1);
                            spmdSend(approximatedReconstructedFrame, 1);
                        end    
                    end
-
-                   % if spmdIndex == 2
-                   %     msg = spmdReceive(1);
-                   % end
-
-                   % Since worker 1 will finish scanning frame early than worker 2,
-                   % continue to send to avoid deadlock
-                   % if spmdIndex == 1
-                   %     if frameIdx ~= numFrames
-                   %          spmdSend(approximatedReconstructedFrame, 2);
-                   %          spmdSend(approximatedReconstructedFrame, 2);
-                   %     end
-                   % end
 
                    reconstructedFrame = approximatedReconstructedFrame;
                    predictedFrame = approximatedPredictedFrame;
@@ -323,10 +310,10 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
               
                if VBSEnable
                    quantizedResiduals = residualFrame;
-                    [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
+                    [~,encodedMDiff,encodedResiduals] = entropyEncode(mode, isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
                else
                    quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                   [nonimporatant1,encodedMDiff,encodedResiduals] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
+                   [~,encodedMDiff,encodedResiduals] = entropyEncode(mode, isIFrame, [], MDiffModes, quantizedResiduals);
                end
     
           
@@ -348,7 +335,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     motionVectors = zeros(numBlocksY, numBlocksX, 3);  % Stores motion vector for each block.
                     vbs_matrix = -1 * ones(numBlocksY, numBlocksX);
                     totalMAE = 0;  % To keep track of the total MAE across all blocks
-                    approximatedReconstructedFrame(1:height,1:width) = zeros(size(currentFrame), 'double');
+                    approximatedReconstructedFrame(1:height,1:width) = 128 * ones(size(currentFrame), 'double');
                     approximatedPredictedFrame = zeros(size(currentFrame), 'double');
                     
                     if spmdIndex == 1
@@ -359,9 +346,9 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                         previous_motion_vector_block = zeros(1, 1, 3);
                          if spmdIndex == 2
                             if blockY ~= numBlocksY -1
-                                fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                % fprintf('Worker %d waiting to receive reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                                 referenceFrame = spmdReceive(1);
-                                fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
+                                % fprintf('Worker %d received reference frame for frame %d from Worker %d\n', spmdIndex, frameIdx, 1);
                                 if FMEEnable
                                     referenceFrame = interpolateFrame(referenceFrame);
                                 end
@@ -421,8 +408,8 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             [MDiffMV_split, previous_motion_vector_block_split] = diffEncoding_block(motionVector_block_split, 'mv', previous_motion_vector_block);
                             
                             % Entropy encoding
-                            [encodedMDiff_large, ~, encodedResidues_large] = entropyEncode(false, MDiffMV_large, [], quantizedResiduals_large);
-                            [encodedMDiff_split, ~, encodedResidues_split] = entropyEncode(false, MDiffMV_split, [], quantizedResiduals_split);
+                            [encodedMDiff_large, ~, encodedResidues_large] = entropyEncode(mode, false, MDiffMV_large, [], quantizedResiduals_large);
+                            [encodedMDiff_split, ~, encodedResidues_split] = entropyEncode(mode, false, MDiffMV_split, [], quantizedResiduals_split);
         
                             % Calculate rate (R) for large and split blocks
                             total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);
@@ -461,13 +448,13 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
 
                             % Store the motion vectors in the corresponding positions
                             motionVectors(blockY:blockY+1, blockX:blockX+1, :) = motionVector_block;
-
+                            
                             totalMAE = totalMAE + total_minMAE;
                         end
 
                         if spmdIndex == 1
                             if frameIdx ~= numFrames
-                                fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 2);
+                                % fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 2);
                                 spmdSend(approximatedReconstructedFrame,2)
                             end
                         end
@@ -476,7 +463,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
 
                     if spmdIndex == 2
                        if frameIdx ~= numFrames
-                           fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 1);
+                           % fprintf('Worker %d sending frame  %d to Worker %d\n', spmdIndex, frameIdx, 1);
                            spmdSend(approximatedReconstructedFrame, 1);
                        end    
                     end
@@ -491,11 +478,11 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                     Residuals = double(currentFrame) - double(predictedFrame);   
                     
                 else
-                    fprintf('Worker %d processing a P frame %d \n', spmdIndex, frameIdx);
+                    % fprintf('Worker %d processing a P frame %d \n', spmdIndex, frameIdx);
                     if spmdIndex == 1
                         referenceFrames = {referenceFrame};
                     end
-                    approximatedReconstructedFrame(1:height,1:width) = zeros(size(currentFrame), 'double');
+                    approximatedReconstructedFrame(1:height,1:width) = 128 * ones(size(currentFrame), 'double');
                     approximatedPredictedFrame = zeros(size(currentFrame), 'double');
                     % Initialize the motion vector array (for storing motion vectors for each block)
                     numBlocksX = width / blockSize; 
@@ -509,9 +496,9 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                         predictedMV = [0,0];
                         if spmdIndex == 2
                             if row ~= height - blockSize + 1  % Only receive if not at the last row
-                                fprintf('Worker %d waiting for reference frame for %d\n', spmdIndex, frameIdx);
+                                % fprintf('Worker %d waiting for reference frame for %d\n', spmdIndex, frameIdx);
                                 referenceFrame = spmdReceive(1);
-                                fprintf('Worker %d received reference frame for %d\n', spmdIndex, frameIdx);
+                                % fprintf('Worker %d received reference frame for %d\n', spmdIndex, frameIdx);
                                 if FMEEnable
                                     referenceFrame = interpolateFrame(referenceFrame);
                                 end
@@ -587,8 +574,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             
                             
                             % Place the reference block into the predicted frame
-                            approximatedPredictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = refBlock;
-                            %double(max(0,min(255,refBlock)));
+                            approximatedPredictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,refBlock)));
                             
 
                             % Compute residuals
@@ -596,8 +582,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
                             quantized_block = quantization(residuals_block, dct_blockSize, blockSize, blockSize, QP);
                             approximated_residualBlock = invquantization(quantized_block,dct_blockSize,blockSize,blockSize,QP);
                             approximatedReconstructedBlock = approximated_residualBlock + refBlock;
-                            approximatedReconstructedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = approximatedReconstructedBlock;
-                            %double(max(0,min(255,approximatedReconstructedBlock)));
+                            approximatedReconstructedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,approximatedReconstructedBlock)));
              
                             totalMAE = totalMAE + minMAE;
 
@@ -619,7 +604,7 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
 
                     if spmdIndex == 2
                        if frameIdx ~= numFrames
-                           fprintf('Worker %d sending frame %d to worker 1\n', spmdIndex, frameIdx);
+                           % fprintf('Worker %d sending frame %d to worker 1\n', spmdIndex, frameIdx);
                            spmdSend(approximatedReconstructedFrame, 1);
                        end    
                     end
@@ -634,16 +619,17 @@ function encoder_mode3(referenceFile, paddedOutputFile, numFrames, width, height
 
                     % Check if the matrix contains -1 or 0 
                     if any(Residuals(:) == -1 | Residuals(:) == 0) 
-                        disp(Residuals); 
+                        fprintf('Residual 0 observed at frame %d \n',frameIdx);
+                      %  disp(Residuals); 
                     end
                 end
 
                 if VBSEnable
                      quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
-                    [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
+                    [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(mode, isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
                 else
                     quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                    [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
+                    [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(mode, isIFrame, MDiffMV, [], quantizedResiduals);
                 end
     
                % Store worker data for this frame

@@ -15,9 +15,9 @@ searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 4;
 j = 4;
 VBSEnable = false;
-FMEEnable = false;
+FMEEnable = true;
 FastME = true;
-mode =3;
+mode = 1;
 
 if(VBSEnable == true)
     j = j-1;
@@ -25,7 +25,7 @@ end
 
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
-I_Period = 8; 
+I_Period = 10; 
 nRefFrames = 1;                 % Can take value from 1 to 4
 
 function lambda = get_lambda_for_qp(QP)
@@ -68,7 +68,7 @@ else
 end
 [total_byte,bytes_list] = decoder(decodedFile,mode);
 % decoder
- compareYUVFrames(predictedFile, outputFile, decodedFile, width, height, numFrames);
+ compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
 % 
 % 
 % 

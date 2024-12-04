@@ -70,6 +70,11 @@ function [bestVector, minMAE, bestL1Norm] = findBestMatchFast(currentBlock, refe
             yOffset = candidateVectors(k, 1);
             xOffset = candidateVectors(k, 2);
 
+            % Added condition to ensure the motion vector stays within the search range 
+            if abs(yOffset) > searchRange || abs(xOffset) > searchRange
+                continue; % Skip this candidate if it exceeds the allowed range
+            end
+
             % Determine the reference block's starting coordinates
             refRow = row + yOffset;
             refCol = col + xOffset;

@@ -1,4 +1,4 @@
-function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyEncode(frame_type, motionVector3d, predicitonModes2d, residues2d,vbs_matrix)
+function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyEncode(mode,frame_type, motionVector3d, predicitonModes2d, residues2d,vbs_matrix)
     % Input:
     % frame_type: 1 for I-frame, 0 for P-frame 
     % pred_diff: array containing differential prediction information (modes for intra or motion vectors for inter)
@@ -31,8 +31,14 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
                     
                     % Extract the corresponding 2x2x3 block from motionVector3d
                     motion_block = motionVector3d(row:row+1, col:col+1, :);
-                    [motion_block,previous_motion_vector_block] = diffEncoding_block(motion_block,'mv',previous_motion_vector_block);
-                    
+                    if mode == 1
+                     %disable diff encoding for mode 1 
+                     [motion_block,previous_motion_vector_block] = diffEncoding_block(motion_block,'mv',previous_motion_vector_block);
+                     previous_motion_vector_block = zeros(1,1,3);
+                    else
+                     [motion_block,previous_motion_vector_block] = diffEncoding_block(motion_block,'mv',previous_motion_vector_block);
+                    end
+
                     if all(vbs_block(:) == 1)  % If this 2x2 block in vbs_matrix is all zeros
                         % Fetch the entire 2x2x3 block from motionVector3d
                         motionVector2d = reshape_3d_to_2d(motion_block);
@@ -65,7 +71,8 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
         end
 
     elseif frame_type == 1
-
+       % intra prediction is disabled for mode 1
+       if mode ~= 1
         if exist('vbs_matrix', 'var')
             [rows, cols] = size(vbs_matrix);
             resultpredictionMode_block_1d = [];
@@ -108,13 +115,14 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
             predicitonModes1d = zigzag(predicitonModes2d);
             encodedPredicitonModes = exp_golomb_encode(predicitonModes1d); 
         end
+      end
     end
-
         residues1d = zigzag(residues2d);
         residuesRLE = rle_encode(residues1d); 
         encodedResidues = exp_golomb_encode(residuesRLE);
 
     % Prepend the frame type to the encoded data (as a header)
+    % For mode 1,encodedPredictionMods only contains the frameTypeHeader
     encodedPredicitonModes = [frameTypeHeader, encodedPredicitonModes];
     encodedMotionVector = [frameTypeHeader, encodedMotionVector];
    

@@ -15,8 +15,6 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
     params.FMEEnable = FMEEnable;
     params.FastME = FastME;
 
-    % There is no intra prediction for parallelMode 1
-    isIFrame = false;
     % Save the parameters to a MAT-file
     save('../Outputs/headerfile.mat', 'params');
 
@@ -54,14 +52,25 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
 
         currentFrame = fread(fid,[width, height], 'uint8')';
 
+        %determin the frame type
+        if frameIdx == 1
+            isIFrame = true;
+        elseif frameIdx < I_Period
+            isIFrame = false;
+        else
+            isIFrame = (mod(frameIdx - 1, I_Period) == 0);
+        end
+
+        if ~isIFrame
+           
+
             % Inter-frame encoding with motion estimation using multiple reference frames
             % Only use valid reference frames based on the pFrameCounter
             validRefFrames = referenceFrames(1:min(pFrameCounter + 1, nRefFrames));
             validInterpolatedRefFrames = interpolatedReferenceFrames(1:min(pFrameCounter + 1, nRefFrames));
             % Motion estimation
             if VBSEnable
-                % Should use blockSize/2 here, same of motion compensation?
-                [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode1(currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
+                [currMotionVectors, avgMAE,vbs_matrix] = vbs_motionEstimation_Mode1(mode,currentFrame, validRefFrames, validInterpolatedRefFrames, blockSize, searchRange, dct_blockSize, QP,lambda,FMEEnable, FastME);  
                 MDiffMV = currMotionVectors;
             else
                 [currMotionVectors, avgMAE] = motionEstimation_Mode1(currentFrame, validRefFrames,validInterpolatedRefFrames, blockSize, searchRange,FMEEnable, FastME);
@@ -75,26 +84,54 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
             % Increment the P-frame counter
             pFrameCounter = min(pFrameCounter + 1, nRefFrames);
 
+        else
+            % Intra-prediction is completely disabled, predictedFrame would be all grey. MDiffModes is empty
+            pFrameCounter = 0;
+            predictedFrame = 128 * ones(height, width,'uint8');
+            Residuals = double(currentFrame) - double(predictedFrame);
+            MDiffModes = [];
+        end
 
+        if ~ isIFrame
 
             if VBSEnable
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
-                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
+                [encodedMDiff,~,encodedResiduals] = entropyEncode(mode,isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
             else
                 quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-                [encodedMDiff,nonimporatant1,encodedResiduals] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
+                [encodedMDiff,~,encodedResiduals] = entropyEncode(mode,isIFrame, MDiffMV, [], quantizedResiduals);
             end
 
             motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
             save(motionVectorFile, 'encodedMDiff');
             residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
             save(residualFile, 'encodedResiduals');
+        else
+        
+              quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
+              [~,encodedMDiff,encodedResiduals] = entropyEncode(mode,isIFrame, [], MDiffModes, quantizedResiduals);
+              
+            % For mode 1, I frame encodedMDiff only contains the frameType header, no prediction information is transmitted
+            save(sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx), 'encodedMDiff');
+            residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
+            save(residualFile, 'encodedResiduals');
 
+            % Clear all previous reference frames
+            for i = 1:nRefFrames
+                referenceFrames{i} = 128 * ones(height, width, 'uint8');  
+            end
+
+            for i = 1:nRefFrames
+                interpolatedReferenceFrames{i} = 128 * ones(height*2 - 1, width*2 -1, 'uint8');  
+            end
+                
+
+        end
             % Reconstruct the frame at the encoder side to create a closed loop 
             % Use it as the reference frame for the next frame
     
             compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
-            if VBSEnable
+            if VBSEnable && ~isIFrame
                 compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
             end
             reconstructedFrame = double(predictedFrame) + double(compresiduals);

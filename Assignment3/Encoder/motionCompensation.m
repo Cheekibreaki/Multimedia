@@ -44,7 +44,7 @@ function predictedFrame = motionCompensation(originalReferenceFrames,interpolate
             
             
             % Place the reference block into the predicted frame
-            predictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = double(max(0,min(255,refBlock)));
+            predictedFrame(row:(row + blockSize - 1), col:(col + blockSize - 1)) = refBlock;
         end
     end
 end
