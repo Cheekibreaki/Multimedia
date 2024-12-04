@@ -179,9 +179,9 @@ function print_summary_statistics(results, QPs)
         % Calculate average time difference (%)
         time_diff = mean((results(i).times - results(base_idx).times) ./ results(base_idx).times * 100);
         
-        fprintf('%s vs Base:\n', results(i).name);
+        fprintf('%s vs Mode 0:\n', results(i).name);
         fprintf('  Average PSNR improvement: %.2f dB\n', psnr_improvement);
-        fprintf('  Average bitrate saving: %.2f%%\n', bitrate_saving);
+        % fprintf('  Average bitrate saving: %.2f%%\n', bitrate_saving);
         fprintf('  Average time difference: %+.2f%%\n\n', time_diff);
     end
 end

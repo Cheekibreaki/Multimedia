@@ -87,9 +87,18 @@ function [total_bytes,bytes_list] = decoder(filename,mode)
                 end
             
             else
+                % numBlocksX = width / blockSize;
+                % numBlocksY = height / blockSize;
+                % vbs_matrix = ones(numBlocksY, numBlocksX);
                 % For mode 1, intra is disabled, no prediction info is available
                 predictedFrame = 128 * ones(height, width, 'uint8');
-                compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
+
+                % if VBSEnable
+                %     compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP, vbs_matrix);
+                % else
+                    compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
+                % end
+
                 intraCompFrame = double(predictedFrame) + double(compresiduals);
             end
 

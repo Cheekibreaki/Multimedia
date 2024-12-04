@@ -30,6 +30,8 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
 
     yuvFile = fopen(referenceFile, 'w');
 
+    predictedFile = '../Outputs/predictedFrames.yuv';
+    predictedYUVFile = fopen(predictedFile,'w');
     % % For the first frame, use the hypothetical reconstructed frame as reference
     % referenceFrame = 128 * ones(height, width,'uint8');  % height * width = 288 * 352
 
@@ -90,6 +92,9 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
             predictedFrame = 128 * ones(height, width,'uint8');
             Residuals = double(currentFrame) - double(predictedFrame);
             MDiffModes = [];
+            % numBlocksX = width / blockSize;
+            % numBlocksY = height / blockSize;
+            % vbs_matrix = ones(numBlocksY, numBlocksX);
         end
 
         if ~ isIFrame
@@ -107,9 +112,14 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
             residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
             save(residualFile, 'encodedResiduals');
         else
-        
-              quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
-              [~,encodedMDiff,encodedResiduals] = entropyEncode(mode,isIFrame, [], MDiffModes, quantizedResiduals);
+            % if VBSEnable
+            %     % For mode 1, intra is disabled, no prediction info is available
+            %     quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP,vbs_matrix); 
+            %     [~,encodedMDiff,encodedResiduals] = entropyEncode(mode,isIFrame, [], MDiffModes, quantizedResiduals,vbs_matrix);
+            % else
+                quantizedResiduals = quantization(Residuals, dct_blockSize,width,height,QP); 
+                [~,encodedMDiff,encodedResiduals] = entropyEncode(mode,isIFrame, [], MDiffModes, quantizedResiduals);
+            % end
               
             % For mode 1, I frame encodedMDiff only contains the frameType header, no prediction information is transmitted
             save(sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx), 'encodedMDiff');
@@ -127,6 +137,7 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
                 
 
         end
+            
             % Reconstruct the frame at the encoder side to create a closed loop 
             % Use it as the reference frame for the next frame
     
@@ -139,6 +150,7 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
             interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
     
             fwrite(yuvFile, reconstructedFrame', 'uint8');
+            fwrite(predictedYUVFile, predictedFrame','uint8');
     
             % Update the reference frames using a sliding window
             referenceFrames = [{reconstructedFrame}, referenceFrames(1:nRefFrames - 1)];
@@ -151,6 +163,7 @@ function encoder_mode1(referenceFile, paddedOutputFile, numFrames, width, height
     % Close the file
     fclose(fid);
     fclose(yuvFile);
+    fclose(predictedYUVFile);
 
 end
 
