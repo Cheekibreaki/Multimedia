@@ -1,9 +1,11 @@
 function [quantizedResiduals,final_encodedResidues] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
     quantizedResiduals = zeros(size(residuals));
+    final_encodedResidues = []
+    row_bits_used = per_block_row_budget;
     if exist('vbs_matrix', 'var') && ~isempty(vbs_matrix)
     [vbsRows, vbsCols] = size(vbs_matrix);
     
-
+    addpath('../Utils');  % For utils functions
 
     %some thing is not right with baseqp adjustment
 
@@ -14,8 +16,8 @@ function [quantizedResiduals,final_encodedResidues] = quantization_entropy(resid
 
 
 
-    final_encodedResidues = []
-    row_bits_used = per_block_row_budget;
+    
+    
     % Iterate over the vbs_matrix in steps of 2 to process 2x2 blocks
         for blockY = 1:2:vbsRows
             if RCflag
@@ -83,27 +85,35 @@ function [quantizedResiduals,final_encodedResidues] = quantization_entropy(resid
     
                             % Store the quantized sub-block
                             quantizedResiduals(subRowOffset:subRowOffset+actualSubBlockHeight-1, subColOffset:subColOffset+actualSubBlockWidth-1) = quantizedBlock;
-    
+                            
+                            quantizedBlock1d = zigzag(quantizedBlock);
+                            residuesRLE = rle_encode(quantizedBlock1d); 
+                            encodedResidues = exp_golomb_encode(residuesRLE);
+                            encodedResidues_length = length(encodedResidues);
+                            final_encodedResidues = [final_encodedResidues, -1 , encodedResidues];
+                             % Calculate bits used by this block
+                            if RCflag
+                             % Flatten the quantized block using zigzag scan
+                                row_bits_used = row_bits_used + encodedResidues_length;
+                           
+                            end
                         end
                     end
                 end
                 
-                        quantizedBlock1d = zigzag(quantizedBlock);
-                        residuesRLE = rle_encode(quantizedBlock1d); 
-                        encodedResidues = exp_golomb_encode(residuesRLE);
-                        encodedResidues_length = length(encodedResidues);
-                        % Calculate bits used by this block
-                    if RCflag
-                     % Flatten the quantized block using zigzag scan
-                        row_bits_used = row_bits_used + encodedResidues_length;
-                   
-                    end
-                    final_encodedResidues = [final_encodedResidues, encodedResidues];
+                        
+                       
+                    
             end
         end
     else
         quantizedResiduals = zeros(size(residuals));
         for row = 1:dct_blockSize:height
+            if RCflag
+                next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
+                baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
+                row_bits_used = 0;
+            end
             for col = 1:dct_blockSize:width
                 block = residuals(row:row+dct_blockSize-1, col:col+dct_blockSize-1);
                 dctBlock = dct2(double(block));
@@ -111,17 +121,20 @@ function [quantizedResiduals,final_encodedResidues] = quantization_entropy(resid
                 Q = createQMatrix(size(block), baseQP);
                 quantizedBlock = round(dctBlock ./ Q);
                 quantizedResiduals(row:row+dct_blockSize-1, col:col+dct_blockSize-1) = quantizedBlock;
-            end
-            
                  % Flatten the quantized block using zigzag scan
                 quantizedBlock1d = zigzag(quantizedBlock);
                 residuesRLE = rle_encode(quantizedBlock1d); 
                 encodedResidues = exp_golomb_encode(residuesRLE);
-            if RCflag
-                % Calculate bits used by this block
-                row_bits_used = bits_used + length(encodedResidues);
+                final_encodedResidues = [final_encodedResidues, -1 ,  encodedResidues];
+                if RCflag
+                    % Calculate bits used by this block
+                    row_bits_used = row_bits_used + length(encodedResidues);
+                end
             end
-            final_encodedResidues = [final_encodedResidues, encodedResidues];
+            
+                
+            
+            
         end
     end
 end
@@ -227,33 +240,6 @@ function encoded = rle_encode(data)
     end
     
     % Add a trailing 0 if the rest of the elements are zeros
-end
-
-
-function QP = findCorrectQP(per_block_row_budget, bitCountPerRow)
-    % Convert variables to int32 if necessary
-    per_block_row_budget = int32(per_block_row_budget);
-    bitCountPerRow = int32(bitCountPerRow);
-    
-    % Iterate through the bitCountPerRow array up to the second last element
-    for idx = 1:(length(bitCountPerRow) - 1)
-        val = bitCountPerRow(idx + 1);
-        next_val = bitCountPerRow(idx);
-        % Check if the budget falls within the current range
-        if (per_block_row_budget > val && per_block_row_budget <= next_val)
-            QP = idx - 1; % Adjust for 0-based indexing
-            return;
-        end
-    end
-    % Check if per_block_row_budget is greater than or equal to the last element
-    if per_block_row_budget <= bitCountPerRow(end)
-        QP = length(bitCountPerRow) - 1; % Adjust for 0-based indexing
-     
-    end
-    % If no match is found, return -1
-    if(per_block_row_budget > bitCountPerRow(1))
-        QP = 0;
-    end
 end
 
 

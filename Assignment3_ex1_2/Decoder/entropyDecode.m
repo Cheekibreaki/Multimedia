@@ -1,4 +1,4 @@
-function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,reconstructed_vbs_matrix] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight,VBSEnable)
+function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,reconstructed_vbs_matrix] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight,dct_blockSize, VBSEnable)
     
     %switch the order of width & height
     temp = mvwidth;
@@ -153,13 +153,113 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
             decodedPredicitonModes2d = diffDecoding(decodedPredicitonModes2d,'modes');
         end
     end
-        
-        residuesRevEGC = exp_golomb_decode(encodedResidues1d);
-        decodedResidues1d = rle_decode(residuesRevEGC, reswidth * resheight); 
-        decodedResidues2d = invzigzag(decodedResidues1d, reswidth, resheight);
-
-        
     
+
+    decodedResidues2d = zeros(reswidth, resheight);
+    idx = 1;  % Index for traversing encodedResidues1d
+    temp = reswidth;
+    reswidth = resheight;
+    resheight = temp;
+
+    % Assuming dct_blockSize is known (should be consistent with quantization_entropy function)
+    if VBSEnable
+        vbs_matrix = reconstructed_vbs_matrix;
+        [vbsRows, vbsCols] = size(vbs_matrix);
+
+        for blockY = 1:2:vbsRows
+            for blockX = 1:2:vbsCols
+                rowOffset = (blockY -1) * dct_blockSize + 1;
+                colOffset = (blockX -1) * dct_blockSize + 1;
+                actualBlockHeight = min(2 * dct_blockSize, resheight - rowOffset +1);
+                actualBlockWidth = min(2 * dct_blockSize, reswidth - colOffset +1);
+                vbs_block = vbs_matrix(blockY:blockY+1, blockX:blockX+1);
+
+                if all(vbs_block(:) == 0)
+                    % Process as a large block
+                    % Skip any -1 separators
+                    while idx <= length(encodedResidues1d) && encodedResidues1d(idx) == -1
+                        idx = idx + 1;
+                    end
+                    % Collect encodedResidues1d for this block until next -1 or end
+                    encodedResidues_block = [];
+                    while idx <= length(encodedResidues1d) && encodedResidues1d(idx) ~= -1
+                        encodedResidues_block = [encodedResidues_block, encodedResidues1d(idx)];
+                        idx = idx + 1;
+                    end
+                    % Decode this block
+                    residuesRevEGC = exp_golomb_decode(encodedResidues_block);
+                    numElements = actualBlockHeight * actualBlockWidth;
+                    decodedResidues1d = rle_decode(residuesRevEGC, numElements);
+                    decodedResidues2d_block = invzigzag(decodedResidues1d, actualBlockHeight, actualBlockWidth);
+                    % Place into decodedResidues2d
+                    decodedResidues2d(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1) = decodedResidues2d_block;
+                else
+                    % Process each sub-block separately
+                    for subBlockY = 0:1
+                        for subBlockX = 0:1
+                            subRowOffset = rowOffset + subBlockY * dct_blockSize;
+                            subColOffset = colOffset + subBlockX * dct_blockSize;
+                            if subRowOffset > resheight || subColOffset > reswidth
+                                continue;
+                            end
+                            actualSubBlockHeight = min(dct_blockSize, resheight - subRowOffset +1);
+                            actualSubBlockWidth = min(dct_blockSize, reswidth - subColOffset +1);
+                            % Skip any -1 separators
+                            while idx <= length(encodedResidues1d) && encodedResidues1d(idx) == -1
+                                idx = idx +1;
+                            end
+                            % Collect encodedResidues1d for this block until next -1 or end
+                            encodedResidues_block = [];
+                            while idx <= length(encodedResidues1d) && encodedResidues1d(idx) ~= -1
+                                encodedResidues_block = [encodedResidues_block, encodedResidues1d(idx)];
+                                idx = idx +1;
+                            end
+                            % Decode
+                            residuesRevEGC = exp_golomb_decode(encodedResidues_block);
+                            numElements = actualSubBlockHeight * actualSubBlockWidth;
+                            decodedResidues1d = rle_decode(residuesRevEGC, numElements);
+                            if isempty(decodedResidues1d)
+                                break;
+                            end
+                            decodedResidues2d_block = invzigzag(decodedResidues1d, actualSubBlockHeight, actualSubBlockWidth);
+                            % Place into decodedResidues2d
+                            decodedResidues2d(subRowOffset:subRowOffset+actualSubBlockHeight-1, subColOffset:subColOffset+actualSubBlockWidth-1) = decodedResidues2d_block;
+                        end
+                    end
+                end
+            end
+        end
+    else
+        % Decoding residues without VBS
+        for row = 1:dct_blockSize:resheight
+            for col = 1:dct_blockSize:reswidth
+                actualBlockHeight = min(dct_blockSize, resheight - row + 1);
+                actualBlockWidth = min(dct_blockSize, reswidth - col + 1);
+                % Skip any -1 separators
+                while idx <= length(encodedResidues1d) && encodedResidues1d(idx) == -1
+                    idx = idx + 1;
+                end
+                % Collect encodedResidues1d for this block until next -1 or end
+                encodedResidues_block = [];
+                while idx <= length(encodedResidues1d) && encodedResidues1d(idx) ~= -1
+                    encodedResidues_block = [encodedResidues_block, encodedResidues1d(idx)];
+                    idx = idx +1;
+                end
+                % Decode
+                residuesRevEGC = exp_golomb_decode(encodedResidues_block);
+                numElements = actualBlockHeight * actualBlockWidth;
+                decodedResidues1d = rle_decode(residuesRevEGC, numElements);
+                if isempty(decodedResidues1d)
+                    break;
+                end
+                decodedResidues2d_block = invzigzag(decodedResidues1d, actualBlockHeight, actualBlockWidth);
+                
+                % Place into decodedResidues2d
+                decodedResidues2d(row:row+actualBlockHeight-1, col:col+actualBlockWidth-1) = decodedResidues2d_block;
+            end
+        end
+    end
+
 end
 
 

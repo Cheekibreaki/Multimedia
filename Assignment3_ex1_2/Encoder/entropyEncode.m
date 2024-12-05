@@ -110,9 +110,9 @@ function [encodedMotionVector,encodedPredicitonModes,encodedResidues] = entropyE
         end
     end
 
-        residues1d = zigzag(residues2d);
-        residuesRLE = rle_encode(residues1d); 
-        encodedResidues = exp_golomb_encode(residuesRLE);
+    residues1d = zigzag(residues2d);
+    residuesRLE = rle_encode(residues1d); 
+    encodedResidues = exp_golomb_encode(residuesRLE);
 
     % Prepend the frame type to the encoded data (as a header)
     encodedPredicitonModes = [frameTypeHeader, encodedPredicitonModes];

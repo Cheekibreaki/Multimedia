@@ -1,4 +1,5 @@
-function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP,lambda)
+function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,final_encodedResidues] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP,lambda,RCflag,per_block_row_budget, bitCountPerRow)
+    addpath('../Utils');  % For utils functions
     [height, width] = size(currentFrame);
     approximatedPredictedFrame_split = zeros(size(currentFrame), 'double');
     approximatedPredictedFrame_large = zeros(size(currentFrame), 'double');
@@ -14,7 +15,14 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame]
     predictionModes = int32(zeros(numBlocksY, numBlocksX));
     vbs_matrix = -1 * ones(numBlocksY, numBlocksX);
 
+    final_encodedResidues = []
+    row_bits_used = per_block_row_budget;
     for blockY = 1:2:numBlocksY
+         if RCflag
+            next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
+            baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
+            row_bits_used = 0;
+        end
         for blockX = 1:2:numBlocksX
             % Extract the current block for RD cost calculation
             rowOffset = (blockY - 1) * blockSize + 1;
@@ -42,8 +50,10 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame]
             % Placeholder for entropyEncode function (you need to implement this)
             % Assuming entropyEncode returns encoded data and its length
             non_important1 = [];
-            [encodedMDiff_large, encodedResidues_large] = entropyEncode(true, non_important1,predictionModes_large(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_large);
-            [encodedMDiff_split, encodedResidues_split] = entropyEncode(true, non_important1,predictionModes_split(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_split);
+            [nonimportant1, encodedMDiff_large, encodedResidues_large] = entropyEncode(true, non_important1,predictionModes_large(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_large);
+            [nonimportant1,encodedMDiff_split, encodedResidues_split] = entropyEncode(true, non_important1,predictionModes_split(blockY:blockY+1, blockX:blockX+1), quantized_residualBlock_split);
+
+
 
             % Calculate rate (R) for large and split blocks
             total_bits_large = numel(encodedMDiff_large) + numel(encodedResidues_large);
@@ -71,6 +81,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame]
                 predictionModes(blockY:blockY+1, blockX:blockX+1) = predictionModes_large(blockY:blockY+1, blockX:blockX+1);
                 vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 0;
                 residualFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = quantized_residualBlock_large;
+                encodedResidues = encodedResidues_large;
             else
                 approximatedReconstructedFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = ...
                     approximatedReconstructed_block_split;
@@ -79,9 +90,15 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame]
                 predictionModes(blockY:blockY+1, blockX:blockX+1) = predictionModes_split(blockY:blockY+1, blockX:blockX+1);
                 vbs_matrix(blockY:blockY+1, blockX:blockX+1) = 1;
                 residualFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1) = quantized_residualBlock_split;
+                encodedResidues = encodedResidues_split;
             end
-
+            if RCflag
+                encodedResidues_length = length(encodedResidues);
+             % Flatten the quantized block using zigzag scan
+                row_bits_used = row_bits_used + encodedResidues_length;
            
+            end
+            final_encodedResidues = [final_encodedResidues, -1 , encodedResidues];
         end
          
     end
