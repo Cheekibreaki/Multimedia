@@ -13,8 +13,8 @@ height = 288;                    % Frame height
 numFrames = 10;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 4;
-j = 4;
-VBSEnable = false;
+j = 3;
+VBSEnable = true;
 FMEEnable = true;
 FastME = true;
 mode = 1;
@@ -68,7 +68,7 @@ else
 end
 [total_byte,bytes_list] = decoder(decodedFile,mode);
 % decoder
- compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
+ compareYUVFrames(predictedFile, outputFile, decodedFile, width, height, numFrames);
 % 
 % 
 % 
