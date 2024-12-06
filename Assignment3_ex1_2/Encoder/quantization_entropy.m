@@ -1,5 +1,6 @@
-function [quantizedResiduals,final_encodedResidues] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
+function [quantizedResiduals,final_encodedResidues,reconstructedResidues] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
     quantizedResiduals = zeros(size(residuals));
+    reconstructedResidues = zeros(size(residuals));
     final_encodedResidues = []
     row_bits_used = per_block_row_budget;
     if exist('vbs_matrix', 'var') && ~isempty(vbs_matrix)
@@ -23,6 +24,7 @@ function [quantizedResiduals,final_encodedResidues] = quantization_entropy(resid
             if RCflag
                 next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
                 baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
+                
                 row_bits_used = 0;
             end
             for blockX = 1:2:vbsCols
@@ -54,6 +56,24 @@ function [quantizedResiduals,final_encodedResidues] = quantization_entropy(resid
     
                     % Store the quantized block
                     quantizedResiduals(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1) = quantizedBlock;
+                    
+                    quantizedBlock1d = zigzag(quantizedBlock);
+                    residuesRLE = rle_encode(quantizedBlock1d); 
+                    encodedResidues = exp_golomb_encode(residuesRLE);
+                    encodedResidues_length = length(encodedResidues);
+                    final_encodedResidues = [final_encodedResidues, -1 , baseQP, encodedResidues];
+                     % Calculate bits used by this block
+                    if RCflag
+                     % Flatten the quantized block using zigzag scan
+                        row_bits_used = row_bits_used + encodedResidues_length;
+                    end
+                    
+                    % Inverse quantization (element-wise multiplication)
+                    dequantizedSubBlock = decodedResidues2d_block .* Q;
+                    
+                    % Apply inverse DCT to the dequantized sub-block
+                    idctSubBlock = idct2(dequantizedSubBlock);
+                    reconstructedResidues(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1) = idctSubBlock;      
                 else
                     % Process each sub-block separately
                     for subBlockY = 0:1
@@ -90,13 +110,20 @@ function [quantizedResiduals,final_encodedResidues] = quantization_entropy(resid
                             residuesRLE = rle_encode(quantizedBlock1d); 
                             encodedResidues = exp_golomb_encode(residuesRLE);
                             encodedResidues_length = length(encodedResidues);
-                            final_encodedResidues = [final_encodedResidues, -1 , encodedResidues];
+                            final_encodedResidues = [final_encodedResidues, -1 , baseQP, encodedResidues];
                              % Calculate bits used by this block
                             if RCflag
                              % Flatten the quantized block using zigzag scan
                                 row_bits_used = row_bits_used + encodedResidues_length;
-                           
                             end
+                            
+                            % Inverse quantization (element-wise multiplication)
+                            dequantizedSubBlock = decodedResidues2d_block .* Q;
+                            
+                            % Apply inverse DCT to the dequantized sub-block
+                            idctSubBlock = idct2(dequantizedSubBlock);
+                            reconstructedResidues(subRowOffset:subRowOffset+actualSubBlockHeight-1, subColOffset:subColOffset+actualSubBlockWidth-1) = idctSubBlock;      
+                            
                         end
                     end
                 end
@@ -112,6 +139,7 @@ function [quantizedResiduals,final_encodedResidues] = quantization_entropy(resid
             if RCflag
                 next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
                 baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
+                
                 row_bits_used = 0;
             end
             for col = 1:dct_blockSize:width
@@ -125,11 +153,18 @@ function [quantizedResiduals,final_encodedResidues] = quantization_entropy(resid
                 quantizedBlock1d = zigzag(quantizedBlock);
                 residuesRLE = rle_encode(quantizedBlock1d); 
                 encodedResidues = exp_golomb_encode(residuesRLE);
-                final_encodedResidues = [final_encodedResidues, -1 ,  encodedResidues];
+                final_encodedResidues = [final_encodedResidues, -1 , baseQP, encodedResidues];
                 if RCflag
                     % Calculate bits used by this block
                     row_bits_used = row_bits_used + length(encodedResidues);
                 end
+
+                % Inverse quantization (element-wise multiplication)
+                dequantizedSubBlock = quantizedBlock .* Q;
+                
+                % Apply inverse DCT to the dequantized sub-block
+                idctSubBlock = idct2(dequantizedSubBlock);
+                reconstructedResidues(row:row+dct_blockSize-1, col:col+dct_blockSize-1) = idctSubBlock;            
             end
             
                 

@@ -1,4 +1,4 @@
-function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,reconstructed_vbs_matrix] = entropyDecode(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight,dct_blockSize, VBSEnable)
+function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,reconstructedResiduals2d,reconstructed_vbs_matrix] = entropyDecode_invquantization(frame_type, encodedMotionVector1d, encodedPredicitonModes1d, encodedResidues1d,mvwidth, mvheight,  predwidth, predheight,  reswidth, resheight,dct_blockSize, VBSEnable)
     
     %switch the order of width & height
     temp = mvwidth;
@@ -154,7 +154,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
         end
     end
     
-
+    reconstructedResiduals2d = zeros(reswidth, resheight);
     decodedResidues2d = zeros(reswidth, resheight);
     idx = 1;  % Index for traversing encodedResidues1d
     temp = reswidth;
@@ -186,7 +186,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                         encodedResidues_block_wth_QP = [encodedResidues_block_wth_QP, encodedResidues1d(idx)];
                         idx = idx +1;
                     end
-                    nonimportant = encodedResidues_block_wth_QP(1);
+                    baseQP = encodedResidues_block_wth_QP(1);
                     encodedResidues_block = encodedResidues_block_wth_QP(2:end);
                     % Decode this block
                     residuesRevEGC = exp_golomb_decode(encodedResidues_block);
@@ -196,8 +196,19 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                         break;
                     end
                     decodedResidues2d_block = invzigzag(decodedResidues1d, actualBlockHeight, actualBlockWidth);
+
+                     % Create the quantization matrix
+                    Q = createQMatrix(size(decodedResidues2d_block), baseQP);
+                    
+                    % Inverse quantization (element-wise multiplication)
+                    dequantizedSubBlock = decodedResidues2d_block .* Q;
+                    
+                    % Apply inverse DCT to the dequantized sub-block
+                    idctSubBlock = idct2(dequantizedSubBlock);
+
                     % Place into decodedResidues2d
                     decodedResidues2d(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1) = decodedResidues2d_block;
+                     reconstructedResiduals2d(rowOffset:rowOffset+actualBlockHeight-1, colOffset:colOffset+actualBlockWidth-1) = idctSubBlock;
                 else
                     % Process each sub-block separately
                     for subBlockY = 0:1
@@ -219,7 +230,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                                 encodedResidues_block_wth_QP = [encodedResidues_block_wth_QP, encodedResidues1d(idx)];
                                 idx = idx +1;
                             end
-                            nonimportant = encodedResidues_block_wth_QP(1);
+                            baseQP = encodedResidues_block_wth_QP(1);
                             encodedResidues_block = encodedResidues_block_wth_QP(2:end);
                             % Decode
                             residuesRevEGC = exp_golomb_decode(encodedResidues_block);
@@ -230,7 +241,16 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                             end
                             decodedResidues2d_block = invzigzag(decodedResidues1d, actualSubBlockHeight, actualSubBlockWidth);
                             % Place into decodedResidues2d
+                            % Create the quantization matrix
+                            Q = createQMatrix(size(decodedResidues2d_block), baseQP);
+                            
+                            % Inverse quantization (element-wise multiplication)
+                            dequantizedSubBlock = decodedResidues2d_block .* Q;
+                            
+                            % Apply inverse DCT to the dequantized sub-block
+                            idctSubBlock = idct2(dequantizedSubBlock);
                             decodedResidues2d(subRowOffset:subRowOffset+actualSubBlockHeight-1, subColOffset:subColOffset+actualSubBlockWidth-1) = decodedResidues2d_block;
+                             reconstructedResiduals2d(subRowOffset:subRowOffset+actualSubBlockHeight-1, subColOffset:subColOffset+actualSubBlockWidth-1) = idctSubBlock;
                         end
                     end
                 end
@@ -252,7 +272,7 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                     encodedResidues_block_wth_QP = [encodedResidues_block_wth_QP, encodedResidues1d(idx)];
                     idx = idx +1;
                 end
-                nonimportant = encodedResidues_block_wth_QP(1);
+                baseQP = encodedResidues_block_wth_QP(1);
                 encodedResidues_block = encodedResidues_block_wth_QP(2:end);
 
 
@@ -270,9 +290,17 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                     break;
                 end
                 decodedResidues2d_block = invzigzag(decodedResidues1d, actualBlockHeight, actualBlockWidth);
+                 % Create the quantization matrix
+                Q = createQMatrix(size(decodedResidues2d_block), baseQP);
                 
+                % Inverse quantization (element-wise multiplication)
+                dequantizedSubBlock = decodedResidues2d_block .* Q;
+                
+                % Apply inverse DCT to the dequantized sub-block
+                idctSubBlock = idct2(dequantizedSubBlock);
                 % Place into decodedResidues2d
                 decodedResidues2d(row:row+actualBlockHeight-1, col:col+actualBlockWidth-1) = decodedResidues2d_block;
+                reconstructedResiduals2d(row:row+actualBlockHeight-1, col:col+actualBlockWidth-1) = idctSubBlock;
             end
         end
     end
@@ -422,6 +450,28 @@ function encoded = rle_encode(data)
     % Add a trailing 0 if the rest of the elements are zeros
 end
 
+function Q = createQMatrix(blockSize, QP)
+    if numel(blockSize) > 1
+        rows = blockSize(1);
+        cols = blockSize(2);
+    else
+        rows = blockSize;
+        cols = blockSize;
+    end
+    
+    Q = zeros(rows, cols);
+    for x = 1:rows
+        for y = 1:cols
+            if (x + y <= rows)
+                Q(x,y) = 2^QP;
+            elseif (x + y == rows + 1)
+                Q(x,y) = 2^(QP+1);
+            else
+                Q(x,y) = 2^(QP+2);
+            end
+        end
+    end
+end
 
 % testdata = [-31, 9, -4, 8, 1, -3, 4, 4, 2, 4, 0, 4, 0, 0, -4, 0, 0, 1, 0, 0]
 % encoded = rle_encode(testdata)

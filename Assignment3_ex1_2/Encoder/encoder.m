@@ -69,7 +69,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             isIFrame = (mod(frameIdx - 1, I_Period) == 0);
         end
         
-        isIFrame = false;
+        % isIFrame = false;
         if isIFrame
            pFrameCounter = 0;
            if VBSEnable
@@ -77,7 +77,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
                MDiffModes = currPredictionModes;
               
            else
-               [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP);
+               [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP,RCflag,per_block_row_budget, bitCountPerRow);
                MDiffModes = diffEncoding(currPredictionModes,'modes');
                Residuals = double(currentFrame) - double(predictedFrame);
            end
@@ -115,7 +115,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
                quantizedResiduals = residualFrame;
                 [nonimporatant1,encodedMDiff,nonimporatant1] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
            else
-               [quantizedResiduals,encodedResidues] = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow); 
+               [quantizedResiduals,encodedResidues,compresiduals] = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow); 
                [nonimporatant1,encodedMDiff,nonimporatant1] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
            end
 
@@ -135,12 +135,12 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         else
            
             if VBSEnable
-                [quantizedResiduals,encodedResidues] = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow,vbs_matrix); 
+                [quantizedResiduals,encodedResidues,compresiduals] = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow,vbs_matrix); 
                 [encodedMDiff,nonimporatant1,nonimporatant2] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
                 
                 total_encodedResidues = total_encodedResidues + length(encodedResidues)
             else
-                [quantizedResiduals,encodedResidues]  = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow); 
+                [quantizedResiduals,encodedResidues,compresiduals]  = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow); 
                 [encodedMDiff,nonimporatant1,nonimporatant2] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
             end
 
@@ -154,10 +154,10 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         % Reconstruct the frame at the encoder side to create a closed loop 
         % Use it as the reference frame for the next frame
         
-        compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
-        if VBSEnable
-                compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
-        end
+        % compresiduals = invquantization(quantizedResiduals, dct_blockSize,width,height,QP);
+        % if VBSEnable
+        %         compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
+        % end
 
         reconstructedFrame = double(predictedFrame) + double(compresiduals);
         reconstructedFrame = double(max(0, min(255, reconstructedFrame)));

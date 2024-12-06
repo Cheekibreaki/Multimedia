@@ -71,18 +71,18 @@ function [total_bytes,bytes_list] = decoder(filename)
        total_bytes = total_bytes+quantizedResInfo.bytes;
        total_bytes = total_bytes+MDiffInfo.bytes;
        bytes_list(frameIdx) =  MDiffInfo.bytes + quantizedResInfo.bytes;
-       isIFrame = false;
+       % isIFrame = false;
 
         if isIFrame
             pFrameCounter = 0;  % Reset the P-frame counter
-            [nonimportant1,predictionModes,quantizedResiduals,vbs_matrix] = entropyDecode(isIFrame, [], encodedMDiff, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,dct_blockSize, VBSEnable);
+             [nonimportant1,predictionModes,quantizedResiduals,compresiduals,vbs_matrix] = entropyDecode_invquantization(isIFrame, [], encodedMDiff, encodedResidues, mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,dct_blockSize, VBSEnable);
            
             
             if VBSEnable
-                compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
+                % compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
                 intraCompFrame = vbs_intraCompensation(predictionModes, compresiduals, blockSize,vbs_matrix);
             else
-                compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
+                % compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
                 intraCompFrame = intraCompensation(predictionModes, compresiduals, blockSize);
             end
 
@@ -106,7 +106,8 @@ function [total_bytes,bytes_list] = decoder(filename)
             % end
           
         else
-            [motionVectors,nonimportant1,quantizedResiduals,vbs_matrix] = entropyDecode(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,dct_blockSize, VBSEnable);
+            % [motionVectors,nonimportant1,quantizedResiduals,vbs_matrix] = entropyDecode(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,dct_blockSize, VBSEnable);
+             [motionVectors,nonimportant1,quantizedResiduals,compresiduals,vbs_matrix] = entropyDecode_invquantization(isIFrame, encodedMDiff, [], encodedResidues,mvheight, mvwidth, predwidth, predheight,  reswidth, resheight,dct_blockSize, VBSEnable);
             % Load the motion vectors and approximated residuals for the current frame
 
             if not (VBSEnable)
@@ -115,11 +116,11 @@ function [total_bytes,bytes_list] = decoder(filename)
             % Perform motion compensation to get the predicted frame
             predictedFrame = motionCompensation(referenceFrames,interpolatedReferenceFrames, motionVectors, blockSize, width, height, FMEEnable);
             
-            if VBSEnable
-                compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
-            else
-                compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
-            end
+            % if VBSEnable
+            %     compresiduals = invquantization_block(quantizedResiduals, dct_blockSize, width, height, QP,vbs_matrix);
+            % else
+            %     compresiduals = invquantization(quantizedResiduals, dct_blockSize, width, height, QP);
+            % end
             % Add the approximated residuals to the predicted frame to reconstruct
             reconstructedFrame = double(predictedFrame) + double(compresiduals);
             interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);

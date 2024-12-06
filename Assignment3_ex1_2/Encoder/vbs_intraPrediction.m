@@ -21,6 +21,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
          if RCflag
             next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
             baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
+            baseQP = 0
             row_bits_used = 0;
         end
         for blockX = 1:2:numBlocksX
@@ -98,7 +99,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
                 row_bits_used = row_bits_used + encodedResidues_length;
            
             end
-            final_encodedResidues = [final_encodedResidues, -1 , encodedResidues];
+            final_encodedResidues = [final_encodedResidues, -1 ,baseQP,encodedResidues];
         end
          
     end
