@@ -15,8 +15,8 @@ QP = 0;
 j = 4;
 VBSEnable = true;
 FMEEnable = true;
-FastME = false;
-RCflag = false;
+FastME = true;
+RCflag = true;
 
 if(VBSEnable == true)
     j = j-1;
