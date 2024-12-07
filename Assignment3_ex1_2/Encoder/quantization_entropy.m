@@ -1,15 +1,16 @@
-function [quantizedResiduals,final_encodedResidues,reconstructedResidues] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
+function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_bits_used] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
     quantizedResiduals = zeros(size(residuals));
     reconstructedResidues = zeros(size(residuals));
     final_encodedResidues = []
     row_bits_used = per_block_row_budget;
+    total_bits_used = 0
     if exist('vbs_matrix', 'var') && ~isempty(vbs_matrix)
     [vbsRows, vbsCols] = size(vbs_matrix);
     
     addpath('../Utils');  % For utils functions
 
     %some thing is not right with baseqp adjustment
-
+    
 
 
 
@@ -21,7 +22,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues] = quan
     
     % Iterate over the vbs_matrix in steps of 2 to process 2x2 blocks
         for blockY = 1:2:vbsRows
-            if RCflag
+            if RCflag == 1
                 next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
                 baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
                 
@@ -63,13 +64,17 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues] = quan
                     encodedResidues_length = length(encodedResidues);
                     final_encodedResidues = [final_encodedResidues, -1 , baseQP, encodedResidues];
                      % Calculate bits used by this block
-                    if RCflag
+                    if RCflag == 1
                      % Flatten the quantized block using zigzag scan
                         row_bits_used = row_bits_used + encodedResidues_length;
                     end
+                    if RCflag == 2
+                        % Calculate bits used by this block
+                        total_bits_used = total_bits_used + encodedResidues_length;
+                    end
                     
                     % Inverse quantization (element-wise multiplication)
-                    dequantizedSubBlock = decodedResidues2d_block .* Q;
+                    dequantizedSubBlock = quantizedBlock .* Q;
                     
                     % Apply inverse DCT to the dequantized sub-block
                     idctSubBlock = idct2(dequantizedSubBlock);
@@ -116,11 +121,18 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues] = quan
                             encodedResidues_length = length(encodedResidues);
                             final_encodedResidues = [final_encodedResidues, -1 , subbaseQP, encodedResidues];
                              % Calculate bits used by this block
-                            if RCflag
+                            if RCflag == 1
                              % Flatten the quantized block using zigzag scan
                                 row_bits_used = row_bits_used + encodedResidues_length;
+                               
                             end
-                            
+                            if RCflag == 2
+                                % Calculate bits used by this block
+                                total_bits_used = total_bits_used + encodedResidues_length;
+                            end
+
+
+
                             % Inverse quantization (element-wise multiplication)
                             dequantizedSubBlock = quantizedBlock .* Q;
                             
@@ -158,9 +170,13 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues] = quan
                 residuesRLE = rle_encode(quantizedBlock1d); 
                 encodedResidues = exp_golomb_encode(residuesRLE);
                 final_encodedResidues = [final_encodedResidues, -1 , baseQP, encodedResidues];
-                if RCflag
+                if RCflag == 1
                     % Calculate bits used by this block
                     row_bits_used = row_bits_used + length(encodedResidues);
+                end
+                if RCflag == 2
+                    % Calculate bits used by this block
+                    total_bits_used = total_bits_used + encodedResidues_length;
                 end
 
                 % Inverse quantization (element-wise multiplication)

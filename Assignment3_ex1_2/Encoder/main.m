@@ -16,7 +16,7 @@ j = 4;
 VBSEnable = true;
 FMEEnable = true;
 FastME = true;
-RCflag = true;
+RCflag = 1;
 
 if(VBSEnable == true)
     j = j-1;
@@ -35,19 +35,33 @@ fps = 30;
 bitCountPerRow = [1989, 1592, 1216, 873, 507, 338, 162, 38, 21, 7];
 bitCountPerRow = 2*bitCountPerRow;
 function lambda = get_lambda_for_qp(QP)
-   if QP == 1
-            lambda = 0.02;
-        elseif QP == 2
-            lambda = 0.1667;
-        elseif QP == 4
-            lambda = 0.1667;
-        elseif QP == 7
-            lambda = 0.222;
-        elseif QP == 10
-            lambda = 0.5;
-        else
-            % Handle other cases if needed
-            lambda = NaN;  % Example: set to NaN if QP is not 1, 4, 7, or 10
+    if QP == 0
+        lambda = 0.01;
+    elseif QP == 1
+        lambda = 0.02;
+    elseif QP == 2
+        lambda = 0.1667;
+    elseif QP == 3
+        lambda = 0.1667;
+    elseif QP == 4
+        lambda = 0.1667;
+    elseif QP == 5
+        lambda = 0.1852;
+    elseif QP == 6
+        lambda = 0.2037
+    elseif QP == 7
+        lambda = 0.222;
+    elseif QP == 8
+        lambda = 0.3148;
+    elseif QP == 9
+        lambda = 0.4074
+    elseif QP == 10
+        lambda = 0.5;
+    elseif QP == 11
+        lambda = 0.55;
+    else
+        % Handle other cases if needed
+        lambda = NaN;  % Example: set to NaN if QP is not 1, 4, 7, or 10
    end
 end
 lambda = get_lambda_for_qp(QP);
