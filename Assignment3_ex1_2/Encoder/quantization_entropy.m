@@ -98,6 +98,8 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues] = quan
                             dctBlock = dct2(double(block));
                             if baseQP > 0
                                 subbaseQP = baseQP - 1;
+                            else
+                                subbaseQP = 0;
                             end
                             % Create the quantization matrix
                             Q = createQMatrix(size(dctBlock), subbaseQP);

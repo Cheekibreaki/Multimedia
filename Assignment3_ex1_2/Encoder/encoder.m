@@ -73,7 +73,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         if isIFrame
            pFrameCounter = 0;
            if VBSEnable
-               [predictedFrame, currPredictionModes, vbs_matrix,residualFrame,encodedResidues] = vbs_intraPrediction(currentFrame, blockSize,dct_blockSize,QP,lambda,RCflag,per_block_row_budget, bitCountPerRow);
+               [predictedFrame, currPredictionModes, vbs_matrix,residualFrame,encodedResidues,compresiduals] = vbs_intraPrediction(currentFrame, blockSize,dct_blockSize,QP,lambda,RCflag,per_block_row_budget, bitCountPerRow);
                MDiffModes = currPredictionModes;
               
            else

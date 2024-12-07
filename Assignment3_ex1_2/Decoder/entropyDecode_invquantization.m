@@ -230,6 +230,9 @@ function [decodedMotionVector3d,decodedPredicitonModes2d,decodedResidues2d,recon
                                 encodedResidues_block_wth_QP = [encodedResidues_block_wth_QP, encodedResidues1d(idx)];
                                 idx = idx +1;
                             end
+                            if isempty(encodedResidues_block_wth_QP)
+                                break;
+                            end
                             baseQP = encodedResidues_block_wth_QP(1);
                             encodedResidues_block = encodedResidues_block_wth_QP(2:end);
                             % Decode

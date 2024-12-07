@@ -1,4 +1,4 @@
-function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,final_encodedResidues] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP,lambda,RCflag,per_block_row_budget, bitCountPerRow)
+function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,final_encodedResidues,approximatedresidualFrame] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP,lambda,RCflag,per_block_row_budget, bitCountPerRow)
     addpath('../Utils');  % For utils functions
     [height, width] = size(currentFrame);
     approximatedPredictedFrame_split = zeros(size(currentFrame), 'double');
@@ -21,7 +21,6 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
          if RCflag
             next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
             baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
-            baseQP = 0
             row_bits_used = 0;
         end
         for blockX = 1:2:numBlocksX
@@ -33,12 +32,12 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
             currentBlock = currentFrame(rowOffset:rowOffset + actualBlockHeight - 1, colOffset:colOffset + actualBlockWidth - 1);
 
             % VBS split estimation
-            [quantized_residualBlock_split, approximatedReconstructed_block_split, approximatedPredictedFrame_split, predictionModes_split, approximatedReconstructedFrame_split] = ...
+            [quantized_residualBlock_split, approximatedReconstructed_block_split, approximatedPredictedFrame_split, predictionModes_split, approximatedReconstructedFrame_split,approximatedresidualFrame] = ...
                 VBS_split_estimation(currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
                 blockY, blockX, blockSize, dct_blockSize, baseQP, numBlocksY, numBlocksX);
 
             % VBS large estimation
-            [quantized_residualBlock_large, approximatedReconstructed_block_large, approximatedPredictedFrame_large, predictionModes_large, approximatedReconstructedFrame_large] = ...
+            [quantized_residualBlock_large, approximatedReconstructed_block_large, approximatedPredictedFrame_large, predictionModes_large, approximatedReconstructedFrame_large,approximatedresidualFrame] = ...
                 VBS_large_estimation(currentFrame, approximatedPredictedFrame, predictionModes, approximatedReconstructedFrame, ...
                 blockY, blockX, blockSize, dct_blockSize, baseQP);
             
