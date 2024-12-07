@@ -69,7 +69,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             isIFrame = (mod(frameIdx - 1, I_Period) == 0);
         end
         
-        % isIFrame = false;
+        isIFrame = false;
         if isIFrame
            pFrameCounter = 0;
            if VBSEnable
@@ -138,7 +138,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
                 [quantizedResiduals,encodedResidues,compresiduals] = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow,vbs_matrix); 
                 [encodedMDiff,nonimporatant1,nonimporatant2] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
                 
-                total_encodedResidues = total_encodedResidues + length(encodedResidues)
+                
             else
                 [quantizedResiduals,encodedResidues,compresiduals]  = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow); 
                 [encodedMDiff,nonimporatant1,nonimporatant2] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);

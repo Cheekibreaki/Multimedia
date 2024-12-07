@@ -71,7 +71,7 @@ function [total_bytes,bytes_list] = decoder(filename)
        total_bytes = total_bytes+quantizedResInfo.bytes;
        total_bytes = total_bytes+MDiffInfo.bytes;
        bytes_list(frameIdx) =  MDiffInfo.bytes + quantizedResInfo.bytes;
-       % isIFrame = false;
+       isIFrame = false;
 
         if isIFrame
             pFrameCounter = 0;  % Reset the P-frame counter

@@ -13,7 +13,7 @@ numFrames = 4;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
 QP = 0;
 j = 4;
-VBSEnable = false;
+VBSEnable = true;
 FMEEnable = false;
 FastME = true;
 RCflag = true;
@@ -28,7 +28,7 @@ I_Period = 8;
 nRefFrames = 4;                 % Can take value from 1 to 4
 
 targetBR = 1140480;
-%targetBR = 640480;
+%targetBR = 40480;
 fps = 30;
 %bitCountPerRow = [2112, 1520, 1256, 1156, 1076, 1056, 65, 32, 15, 7];
 % For p frame

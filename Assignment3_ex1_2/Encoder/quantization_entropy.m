@@ -96,9 +96,11 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues] = quan
     
                             % Apply DCT to the sub-block
                             dctBlock = dct2(double(block));
-    
+                            if baseQP > 0
+                                subbaseQP = baseQP - 1;
+                            end
                             % Create the quantization matrix
-                            Q = createQMatrix(size(dctBlock), baseQP -1);
+                            Q = createQMatrix(size(dctBlock), subbaseQP);
     
                             % Quantize the DCT coefficients
                             quantizedBlock = round(dctBlock ./ Q);
@@ -110,7 +112,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues] = quan
                             residuesRLE = rle_encode(quantizedBlock1d); 
                             encodedResidues = exp_golomb_encode(residuesRLE);
                             encodedResidues_length = length(encodedResidues);
-                            final_encodedResidues = [final_encodedResidues, -1 , baseQP, encodedResidues];
+                            final_encodedResidues = [final_encodedResidues, -1 , subbaseQP, encodedResidues];
                              % Calculate bits used by this block
                             if RCflag
                              % Flatten the quantized block using zigzag scan
@@ -118,7 +120,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues] = quan
                             end
                             
                             % Inverse quantization (element-wise multiplication)
-                            dequantizedSubBlock = decodedResidues2d_block .* Q;
+                            dequantizedSubBlock = quantizedBlock .* Q;
                             
                             % Apply inverse DCT to the dequantized sub-block
                             idctSubBlock = idct2(dequantizedSubBlock);
