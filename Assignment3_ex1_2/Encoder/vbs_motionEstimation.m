@@ -1,4 +1,4 @@
-function [motionVectors, avgMAE, vbs_matrix] = vbs_motionEstimation(currentFrame, originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize, QP, lambda, FMEEnable, FastME)
+function [motionVectors, avgMAE, vbs_matrix] = vbs_motionEstimation(currentFrame, originalReferenceFrames, interpolatedReferenceFrames, blockSize, searchRange, dct_blockSize, QP, lambda, FMEEnable, FastME, pass, pass_1_motion_vectors,RCflag)
     % Get the dimensions of the frame
     [height, width] = size(currentFrame);
 
@@ -27,6 +27,10 @@ function [motionVectors, avgMAE, vbs_matrix] = vbs_motionEstimation(currentFrame
             % Extract the current block from the current frame
             currentBlock = currentFrame(rowOffset:rowOffset + currentBlockSize - 1, ...
                                         colOffset:colOffset + currentBlockSize - 1);
+            
+            if(pass == 2 && RCflag == 3)
+                previous_motion_vector_block = pass_1_motion_vectors(blockY:blockY+1, blockX:blockX+1, :);
+            end 
 
             % Compute motion estimation for large block and split blocks
             [motionVector_block_large, total_minMAE_large] = compute_motionVector_block(currentBlock, currentBlockSize, originalReferenceFrames, interpolatedReferenceFrames, rowOffset, colOffset, searchRange, previous_motion_vector_block, true, FMEEnable, FastME);

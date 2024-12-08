@@ -11,7 +11,7 @@ width = 352;                     % Frame width
 height = 288;                    % Frame height
 numFrames = 4;                 % Number of frames to process
 searchRange = 4;                 % Search range r = 1,4, and 8
-QP = 4;
+QP = 7;
 j = 4;
 VBSEnable = true;
 FMEEnable = false;

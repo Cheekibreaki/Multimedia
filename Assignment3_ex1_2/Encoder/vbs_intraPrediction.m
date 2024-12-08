@@ -1,4 +1,4 @@
-function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,final_encodedResidues,approximatedresidualFrame,total_bits_used,total_per_row_bits_used] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP,lambda,RCflag,per_block_row_budget, bitCountPerRow)
+function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,final_encodedResidues,approximatedresidualFrame,total_bits_used,total_per_row_bits_used] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP,lambda,RCflag,per_block_row_budget, bitCountPerRow,pass,total_per_row_qp)
     addpath('../Utils');  % For utils functions
     [height, width] = size(currentFrame);
     approximatedresidualFrame = size(currentFrame);
@@ -27,10 +27,15 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
             baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
             row_bits_used = 0;
          end
-         if RCflag == 2
+         if RCflag > 1
            
             row_bits_used = 0;
-        end
+         end
+         row_idx = 1;
+         if RCflag > 1 && pass == 2
+               baseQP = total_per_row_qp(row_idx);
+               row_idx = row_idx + 1;
+         end
         for blockX = 1:2:numBlocksX
             % Extract the current block for RD cost calculation
             rowOffset = (blockY - 1) * blockSize + 1;
@@ -108,7 +113,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
                
                 end
 
-                if RCflag == 2
+                if RCflag > 1
                     % Calculate bits used by this block
                     total_bits_used = total_bits_used + encodedResidues_length;
                     row_bits_used = row_bits_used + encodedResidues_length;
@@ -174,7 +179,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
                                 row_bits_used = row_bits_used + encodedResidues_length;
                                
                         end
-                        if RCflag == 2
+                        if RCflag > 1
                             % Calculate bits used by this block
                             total_bits_used = total_bits_used + encodedResidues_length;
                             row_bits_used = row_bits_used + encodedResidues_length;
@@ -190,7 +195,7 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
             
             
         end
-         if RCflag == 2
+         if RCflag > 1
             total_per_row_bits_used = [total_per_row_bits_used,row_bits_used];
          end
     end

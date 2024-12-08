@@ -1,4 +1,4 @@
-function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_bits_used,total_per_row_bits_used] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
+function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_bits_used,total_per_row_bits_used] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow,pass,total_per_row_qp, vbs_matrix)
     quantizedResiduals = zeros(size(residuals));
     reconstructedResidues = zeros(size(residuals));
     final_encodedResidues = [];
@@ -19,7 +19,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
 
 
 
-    
+    row_idx = 1;
     
     % Iterate over the vbs_matrix in steps of 2 to process 2x2 blocks
         for blockY = 1:2:vbsRows
@@ -28,7 +28,11 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                 baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
                 row_bits_used = 0;
             end
-            if RCflag == 2
+            if RCflag > 1 && pass == 2
+               baseQP = total_per_row_qp(row_idx)
+               row_idx = row_idx + 1;
+            end
+            if RCflag > 1
                 row_bits_used = 0;
             end
             for blockX = 1:2:vbsCols
@@ -71,7 +75,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                      % Flatten the quantized block using zigzag scan
                         row_bits_used = row_bits_used + encodedResidues_length;
                     end
-                    if RCflag == 2
+                    if RCflag > 1
                         % Calculate bits used by this block
                         total_bits_used = total_bits_used + encodedResidues_length;
                         row_bits_used = row_bits_used + encodedResidues_length;
@@ -130,7 +134,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                                 row_bits_used = row_bits_used + encodedResidues_length;
                                
                             end
-                            if RCflag == 2
+                            if RCflag > 1
                                 % Calculate bits used by this block
                                 total_bits_used = total_bits_used + encodedResidues_length;
                                 row_bits_used = row_bits_used + encodedResidues_length;
@@ -154,11 +158,11 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                        
                     
             end
-            
-        end
-        if RCflag == 2
+            if RCflag > 1
             total_per_row_bits_used = [total_per_row_bits_used,row_bits_used];
+            end
         end
+        
     else
         quantizedResiduals = zeros(size(residuals));
         for row = 1:dct_blockSize:height
@@ -168,9 +172,13 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                 
                 row_bits_used = 0;
             end
-            if RCflag == 2
+            if RCflag > 1
                
                 row_bits_used = 0;
+            end
+            if RCflag > 1 && pass == 2
+               baseQP = total_per_row_qp(row_idx)
+               row_idx = row_idx + 1;
             end
             for col = 1:dct_blockSize:width
                 block = residuals(row:row+dct_blockSize-1, col:col+dct_blockSize-1);
@@ -202,7 +210,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                 reconstructedResidues(row:row+dct_blockSize-1, col:col+dct_blockSize-1) = idctSubBlock;            
             
             end
-            if RCflag == 2
+            if RCflag > 1
                 total_per_row_bits_used = [total_per_row_bits_used,row_bits_used];
             end
                 
