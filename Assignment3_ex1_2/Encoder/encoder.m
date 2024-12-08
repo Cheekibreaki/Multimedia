@@ -1,4 +1,4 @@
-function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable,FMEEnable,FastME,RCflag,per_block_row_budget,bitCountPerRow)
+function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable,FMEEnable,FastME,RCflag,per_block_row_budget,p_bitCountPerRow,i_bitCountPerRow)
     % encoderEx3: This function performs motion estimation and motion 
     % compensation to encode a video sequence. It also visualizes the 
     % residuals before and after motion compensation for each frame.
@@ -33,7 +33,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
 
     % Open the padded Y only file
     fid = fopen(paddedOutputFile, 'r');
-
+    
     % Open file for dumping motion vectors
 
     yuvFile = fopen(referenceFile, 'w');
@@ -55,9 +55,19 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
     end
 
     pFrameCounter = 0; % count number of p frames since the last intra frame. This is tracked to ensure valid number of reference frames.
-    total_encodedResidues = 0
-    for frameIdx = 1:numFrames
     
+    RCthreshold = 1;
+    pass = 1;
+    frameIdx = 1;
+    while frameIdx <= numFrames
+    
+        if(RCflag == 2 && pass == 3)
+            frameIdx = frameIdx +1;   
+            pass = 1;
+        end
+        
+        fprintf('Processed frame %d pass %d\n', frameIdx,pass) % %d for integers
+
         currentFrame = fread(fid,[width, height], 'uint8')';
 
         %determin the frame type
@@ -73,11 +83,11 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         if isIFrame
            pFrameCounter = 0;
            if VBSEnable
-               [predictedFrame, currPredictionModes, vbs_matrix,residualFrame,encodedResidues,compresiduals] = vbs_intraPrediction(currentFrame, blockSize,dct_blockSize,QP,lambda,RCflag,per_block_row_budget, bitCountPerRow);
+               [predictedFrame, currPredictionModes, vbs_matrix,residualFrame,encodedResidues,compresiduals,total_bits_used,total_per_row_bits_used] = vbs_intraPrediction(currentFrame, blockSize,dct_blockSize,QP,lambda,RCflag,per_block_row_budget, i_bitCountPerRow);
                MDiffModes = currPredictionModes;
               
            else
-               [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP,RCflag,per_block_row_budget, bitCountPerRow);
+               [predictedFrame, currPredictionModes] = intraPrediction(currentFrame, blockSize,dct_blockSize,QP,RCflag,per_block_row_budget, i_bitCountPerRow);
                MDiffModes = diffEncoding(currPredictionModes,'modes');
                Residuals = double(currentFrame) - double(predictedFrame);
            end
@@ -115,9 +125,11 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
                quantizedResiduals = residualFrame;
                 [nonimporatant1,encodedMDiff,nonimporatant1] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals, vbs_matrix);
            else
-               [quantizedResiduals,encodedResidues,compresiduals] = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow); 
+               [quantizedResiduals,encodedResidues,compresiduals,total_bits_used,total_per_row_bits_used] = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, i_bitCountPerRow); 
                [nonimporatant1,encodedMDiff,nonimporatant1] = entropyEncode(isIFrame, [], MDiffModes, quantizedResiduals);
            end
+            
+            total_per_row_perc = calcRowPercent(total_per_row_bits_used,total_bits_used);
 
             save(sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx), 'encodedMDiff');
             residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
@@ -135,14 +147,17 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         else
            
             if VBSEnable
-                [quantizedResiduals,encodedResidues,compresiduals,total_bits_used] = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow,vbs_matrix); 
+                [quantizedResiduals,encodedResidues,compresiduals,total_bits_used,total_per_row_bits_used] = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, p_bitCountPerRow,vbs_matrix); 
                 [encodedMDiff,nonimporatant1,nonimporatant2] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals,vbs_matrix);
                 
                 
             else
-                [quantizedResiduals,encodedResidues,compresiduals,total_bits_used]  = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, bitCountPerRow); 
+                [quantizedResiduals,encodedResidues,compresiduals,total_bits_used,total_per_row_bits_used]  = quantization_entropy(Residuals, dct_blockSize,width,height,QP,RCflag,per_block_row_budget, p_bitCountPerRow); 
                 [encodedMDiff,nonimporatant1,nonimporatant2] = entropyEncode(isIFrame, MDiffMV, [], quantizedResiduals);
             end
+            
+            total_per_row_perc = calcRowPercent(total_per_row_bits_used,total_bits_used);
+
 
             motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
             save(motionVectorFile, 'encodedMDiff');
@@ -168,15 +183,21 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         % Update the reference frames using a sliding window
         referenceFrames = [{reconstructedFrame}, referenceFrames(1:nRefFrames - 1)];
         interpolatedReferenceFrames = [{interpolatedReconstructedFrame}, interpolatedReferenceFrames(1:nRefFrames - 1)];
-        fprintf('Processed frame %d\n', frameIdx);
-       
+
+        if(RCflag == 2 && pass == 1)
+            pass = 2;
+        elseif(RCflag == 2 && pass == 2)
+            pass = 3;
+        end
+
+        if RCflag ~= 2
+            frameIdx = frameIdx + 1;
         
+        end
+
     end
     
-    avg_encodedResidues = total_encodedResidues/numFrames;
-    per_block_budget = avg_encodedResidues/((width*height)/(blockSize * blockSize));
 
-    per_block_row_budget = per_block_budget * (width/blockSize);    % Close the file
     fclose(fid);
     fclose(yuvFile);
 

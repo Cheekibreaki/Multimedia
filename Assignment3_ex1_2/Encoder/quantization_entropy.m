@@ -1,9 +1,10 @@
-function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_bits_used] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
+function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_bits_used,total_per_row_bits_used] = quantization_entropy(residuals, dct_blockSize, width, height, baseQP,RCflag,per_block_row_budget, bitCountPerRow, vbs_matrix)
     quantizedResiduals = zeros(size(residuals));
     reconstructedResidues = zeros(size(residuals));
-    final_encodedResidues = []
+    final_encodedResidues = [];
     row_bits_used = per_block_row_budget;
-    total_bits_used = 0
+    total_bits_used = 0;
+    total_per_row_bits_used = [];
     if exist('vbs_matrix', 'var') && ~isempty(vbs_matrix)
     [vbsRows, vbsCols] = size(vbs_matrix);
     
@@ -25,7 +26,9 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
             if RCflag == 1
                 next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
                 baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
-                
+                row_bits_used = 0;
+            end
+            if RCflag == 2
                 row_bits_used = 0;
             end
             for blockX = 1:2:vbsCols
@@ -71,6 +74,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                     if RCflag == 2
                         % Calculate bits used by this block
                         total_bits_used = total_bits_used + encodedResidues_length;
+                        row_bits_used = row_bits_used + encodedResidues_length;
                     end
                     
                     % Inverse quantization (element-wise multiplication)
@@ -129,6 +133,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                             if RCflag == 2
                                 % Calculate bits used by this block
                                 total_bits_used = total_bits_used + encodedResidues_length;
+                                row_bits_used = row_bits_used + encodedResidues_length;
                             end
 
 
@@ -145,17 +150,26 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                 end
                 
                         
+                
                        
                     
             end
+            
+        end
+        if RCflag == 2
+            total_per_row_bits_used = [total_per_row_bits_used,row_bits_used];
         end
     else
         quantizedResiduals = zeros(size(residuals));
         for row = 1:dct_blockSize:height
-            if RCflag
+            if RCflag == 1
                 next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
                 baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
                 
+                row_bits_used = 0;
+            end
+            if RCflag == 2
+               
                 row_bits_used = 0;
             end
             for col = 1:dct_blockSize:width
@@ -177,6 +191,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                 if RCflag == 2
                     % Calculate bits used by this block
                     total_bits_used = total_bits_used + encodedResidues_length;
+                    row_bits_used = row_bits_used + length(encodedResidues);
                 end
 
                 % Inverse quantization (element-wise multiplication)
@@ -185,8 +200,11 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                 % Apply inverse DCT to the dequantized sub-block
                 idctSubBlock = idct2(dequantizedSubBlock);
                 reconstructedResidues(row:row+dct_blockSize-1, col:col+dct_blockSize-1) = idctSubBlock;            
-            end
             
+            end
+            if RCflag == 2
+                total_per_row_bits_used = [total_per_row_bits_used,row_bits_used];
+            end
                 
             
             

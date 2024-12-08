@@ -9,7 +9,7 @@ function QP = findCorrectQP(per_block_row_budget, bitCountPerRow)
         next_val = bitCountPerRow(idx);
         % Check if the budget falls within the current range
         if (per_block_row_budget > val && per_block_row_budget <= next_val)
-            QP = idx - 1; % Adjust for 0-based indexing
+            QP = idx + 1; % Adjust for 0-based indexing
             return;
         end
     end

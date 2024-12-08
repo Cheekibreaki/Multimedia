@@ -1,4 +1,4 @@
-function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,final_encodedResidues,approximatedresidualFrame] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP,lambda,RCflag,per_block_row_budget, bitCountPerRow)
+function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,final_encodedResidues,approximatedresidualFrame,total_bits_used,total_per_row_bits_used] = vbs_intraPrediction(currentFrame, blockSize, dct_blockSize, baseQP,lambda,RCflag,per_block_row_budget, bitCountPerRow)
     addpath('../Utils');  % For utils functions
     [height, width] = size(currentFrame);
     approximatedresidualFrame = size(currentFrame);
@@ -15,13 +15,20 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
     predictionModes_large = int32(zeros(numBlocksY, numBlocksX));
     predictionModes = int32(zeros(numBlocksY, numBlocksX));
     vbs_matrix = -1 * ones(numBlocksY, numBlocksX);
+    total_bits_used = 0;
+    total_per_row_bits_used = [];
 
-    final_encodedResidues = []
+
+    final_encodedResidues = [];
     row_bits_used = per_block_row_budget;
     for blockY = 1:2:numBlocksY
-         if RCflag
+         if RCflag == 1
             next_row_budget = per_block_row_budget + (per_block_row_budget - row_bits_used);
             baseQP = findCorrectQP(next_row_budget,bitCountPerRow);
+            row_bits_used = 0;
+         end
+         if RCflag == 2
+           
             row_bits_used = 0;
         end
         for blockX = 1:2:numBlocksX
@@ -93,11 +100,18 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
                 encodedResidues = encodedResidues_large;
 
                 final_encodedResidues = [final_encodedResidues, -1 ,baseQP,encodedResidues];
-                if RCflag
-                    encodedResidues_length = length(encodedResidues);
+                encodedResidues_length = length(encodedResidues);
+                if RCflag == 1
+                    
                  % Flatten the quantized block using zigzag scan
                     row_bits_used = row_bits_used + encodedResidues_length;
                
+                end
+
+                if RCflag == 2
+                    % Calculate bits used by this block
+                    total_bits_used = total_bits_used + encodedResidues_length;
+                    row_bits_used = row_bits_used + encodedResidues_length;
                 end
 
             else
@@ -155,7 +169,14 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
                         final_encodedResidues = [final_encodedResidues, -1, subbaseQP, encodedResidues];
                 
                         % Update row_bits_used if RCflag is enabled
-                        if RCflag
+                        if RCflag == 1
+                             % Flatten the quantized block using zigzag scan
+                                row_bits_used = row_bits_used + encodedResidues_length;
+                               
+                        end
+                        if RCflag == 2
+                            % Calculate bits used by this block
+                            total_bits_used = total_bits_used + encodedResidues_length;
                             row_bits_used = row_bits_used + encodedResidues_length;
                         end
                     end
@@ -169,7 +190,9 @@ function [approximatedPredictedFrame, predictionModes, vbs_matrix,residualFrame,
             
             
         end
-         
+         if RCflag == 2
+            total_per_row_bits_used = [total_per_row_bits_used,row_bits_used];
+         end
     end
     % reconstructedImage = uint8(approximatedPredictedFrame_large);
     %         imshow(reconstructedImage);

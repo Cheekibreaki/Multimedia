@@ -2,15 +2,18 @@ addpath('../Utils');  % For utils functions
 addpath('../Outputs');  % For utils functions
 addpath('../Decoder');  % For Decoder functions
 % Parameters
-filename = '../foreman_cif-1.yuv';  % YUV file to read
+filename = '../QCIF.yuv';  % YUV file to read
+% filename = '../CIF.yuv';  % YUV file to read
 outputFile = '../Outputs/Y_only_foreman.yuv'; % File to store Y-only components
 paddedOutputFile = '../Outputs/padded_Y_foreman.yuv'; % File to store padded Y components
 referenceFile = '../Outputs/referenceFrames.yuv';
 decodedFile = '../Outputs/decoded_Y_foreman.yuv';
-width = 352;                     % Frame width
-height = 288;                    % Frame height
-numFrames = 4;                 % Number of frames tfalseo process
-searchRange = 4;                 % Search range r = 1,4, and 8
+% width = 352;                     % Frame width
+% height = 288;                    % Frame height
+width = 176;                     % Frame width
+height = 144;                    % Frame height
+numFrames = 21;                 % Number of frames tfalseo process
+searchRange = 16;                 % Search range r = 1,4, and 8
 QP = 0;
 j = 4;
 VBSEnable = true;
@@ -24,16 +27,22 @@ end
 
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
-I_Period = 8; 
-nRefFrames = 4;                 % Can take value from 1 to 4
+I_Period = 4; 
+nRefFrames = 1;                 % Can take value from 1 to 4
 
-targetBR = 1140480;
-%targetBR = 40480;
+%targetBR = 2737152;
+targetBR = 1094860;
+
+
 fps = 30;
 %bitCountPerRow = [2112, 1520, 1256, 1156, 1076, 1056, 65, 32, 15, 7];
-% For p frame
-bitCountPerRow = [1989, 1592, 1216, 873, 507, 338, 162, 38, 21, 7];
-bitCountPerRow = 2*bitCountPerRow;
+% For CIF
+% i_bitCountPerRow = [25051, 25360, 18853, 12997, 8962, 5237, 3086, 1714, 737, 439,389,391];
+% p_bitCountPerRow = [19646,14576,9974,6222,3538,2058,1293,734,475,378,354];
+% For QCIF
+i_bitCountPerRow = [13781,10479,7783,5642,3870,2479,1326,489,216,186,181];
+p_bitCountPerRow = [9624,7059,4936,3315,2121,1318,824,433,253,189,183];
+
 function lambda = get_lambda_for_qp(QP)
     if QP == 0
         lambda = 0.01;
@@ -80,7 +89,7 @@ end
 
 
 % % encoder
-encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,RCflag,per_block_row_budget,bitCountPerRow  );
+encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,RCflag,per_block_row_budget,p_bitCountPerRow,i_bitCountPerRow  );
 [total_byte,bytes_list] = decoder(decodedFile);
 % %decoder
 compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);
