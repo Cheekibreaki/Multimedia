@@ -62,16 +62,30 @@ function [total_bytes,bytes_list] = decoder(filename)
        load(quantizedresidualFile, 'encodedResidues');
        
        %extract the header of MDiff to get frame type
-       MDiffFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
+
+        MDiffFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
        load(MDiffFile, 'encodedMDiff');
+       bytes_list(frameIdx) =  numel(encodedMDiff) + numel(encodedResidues);
        isIFrame = encodedMDiff(1);
        encodedMDiff = encodedMDiff(2:end); 
-        quantizedResInfo = dir(quantizedresidualFile);
-        MDiffInfo = dir(MDiffFile);
-       total_bytes = total_bytes+quantizedResInfo.bytes;
-       total_bytes = total_bytes+MDiffInfo.bytes;
-       bytes_list(frameIdx) =  MDiffInfo.bytes + quantizedResInfo.bytes;
-       %isIFrame = false;
+        % quantizedResInfo = dir(quantizedresidualFile);
+        % MDiffInfo = dir(MDiffFile);
+       total_bytes = total_bytes+numel(encodedResidues);
+       total_bytes = total_bytes+numel(encodedMDiff);
+
+
+
+
+       % MDiffFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
+       % load(MDiffFile, 'encodedMDiff');
+       % isIFrame = encodedMDiff(1);
+       % encodedMDiff = encodedMDiff(2:end); 
+       %  quantizedResInfo = dir(quantizedresidualFile);
+       %  MDiffInfo = dir(MDiffFile);
+       % total_bytes = total_bytes+quantizedResInfo.bytes;
+       % total_bytes = total_bytes+MDiffInfo.bytes;
+       % bytes_list(frameIdx) =  MDiffInfo.bytes + quantizedResInfo.bytes;
+       % %isIFrame = false;
 
         if isIFrame
             pFrameCounter = 0;  % Reset the P-frame counter
@@ -126,7 +140,7 @@ function [total_bytes,bytes_list] = decoder(filename)
             interpolatedReconstructedFrame = interpolateFrame(reconstructedFrame);
              
            % Save the P-frame with overlays as an image
-            saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx);
+            %saveVisualizeReferenceFrames(reconstructedFrame, motionVectors, frameIdx);
             
             % if VBSEnable
             %     vbsVisualization(isIFrame,reconstructedFrame, vbs_matrix, blockSize, frameIdx, motionVectors,[]);

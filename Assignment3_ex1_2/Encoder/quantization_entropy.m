@@ -73,6 +73,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                      % Calculate bits used by this block
                     if RCflag == 1
                      % Flatten the quantized block using zigzag scan
+                     total_bits_used = total_bits_used + encodedResidues_length;
                         row_bits_used = row_bits_used + encodedResidues_length;
                     end
                     if RCflag > 1
@@ -131,6 +132,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                              % Calculate bits used by this block
                             if RCflag == 1
                              % Flatten the quantized block using zigzag scan
+                             total_bits_used = total_bits_used + encodedResidues_length;
                                 row_bits_used = row_bits_used + encodedResidues_length;
                                
                             end
@@ -194,6 +196,7 @@ function [quantizedResiduals,final_encodedResidues,reconstructedResidues,total_b
                 final_encodedResidues = [final_encodedResidues, -1 , baseQP, encodedResidues];
                 if RCflag == 1
                     % Calculate bits used by this block
+                    total_bits_used = total_bits_used + encodedResidues_length;
                     row_bits_used = row_bits_used + length(encodedResidues);
                 end
                 if RCflag == 2

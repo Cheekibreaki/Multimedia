@@ -1,3 +1,4 @@
+clear; close all; clc;
 addpath('../Utils');  % For utils functions
 addpath('../Outputs');  % For utils functions
 addpath('../Decoder');  % For Decoder functions
@@ -14,12 +15,12 @@ height = 288;                    % Frame height
 % height = 144;                    % Frame height
 numFrames = 10;                 % Number of frames tfalseo process
 searchRange = 16;                 % Search range r = 1,4, and 8
-QP = 5;
+QP = 2;
 j = 4;
 VBSEnable = true;
 FMEEnable = true;
 FastME = true;
-RCflag = 1;
+RCflag = 2;
 
 if(VBSEnable == true)
     j = j-1;
@@ -27,7 +28,7 @@ end
 
 blockSize = 2^j;                   % Block size for motion estimation
 dct_blockSize = 2^j;
-I_Period = 6; 
+I_Period = 21; 
 nRefFrames = 1;                 % Can take value from 1 to 4
 
 targetBR = 2737152;
@@ -80,16 +81,20 @@ QPs = [1,2,4,7,10];
 
 
 dumpYComponentsToFile(filename, width, height, numFrames, outputFile);
-
+per_frame_budget = 0;
 [paddedWidth,paddedHeight] = padYComponentsFromFile(outputFile, numFrames, width, height, blockSize, paddedOutputFile);
+if(RCflag > 1)
+    [per_block_row_budget,per_frame_budget] = get_per_row_budget(targetBR,fps,paddedWidth,paddedHeight,blockSize);
+    QP = findCorrectQP(per_block_row_budget,p_bitCountPerRow);
+end
 per_block_row_budget = 0;
 if RCflag == true
-    per_block_row_budget = get_per_row_budget(targetBR,fps,paddedWidth,paddedHeight,blockSize);
+    [per_block_row_budget,per_frame_budget] = get_per_row_budget(targetBR,fps,paddedWidth,paddedHeight,blockSize);
 end
 
 
 % % encoder
-encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,RCflag,per_block_row_budget,p_bitCountPerRow,i_bitCountPerRow  );
+encoder(referenceFile, paddedOutputFile, numFrames,paddedWidth, paddedHeight, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable, FMEEnable,FastME,RCflag,per_block_row_budget,p_bitCountPerRow,i_bitCountPerRow,per_frame_budget );
 [total_byte,bytes_list] = decoder(decodedFile);
 % %decoder
 compareYUVFrames(referenceFile, outputFile, decodedFile, width, height, numFrames);

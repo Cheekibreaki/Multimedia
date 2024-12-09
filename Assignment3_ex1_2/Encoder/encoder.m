@@ -1,4 +1,4 @@
-function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable,FMEEnable,FastME,RCflag,per_block_row_budget,p_bitCountPerRow,i_bitCountPerRow)
+function encoder(referenceFile, paddedOutputFile, numFrames, width, height, blockSize, searchRange, dct_blockSize, QP, I_Period, nRefFrames,lambda,VBSEnable,FMEEnable,FastME,RCflag,per_block_row_budget,p_bitCountPerRow,i_bitCountPerRow,per_frame_budget)
     % encoderEx3: This function performs motion estimation and motion 
     % compensation to encode a video sequence. It also visualizes the 
     % residuals before and after motion compensation for each frame.
@@ -22,6 +22,9 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
     params.VBSEnable = VBSEnable;
     params.FMEEnable = FMEEnable;
     params.FastME = FastME;
+    
+    
+    
     
     % Save the parameters to a MAT-file
     save('../Outputs/headerfile.mat', 'params');
@@ -56,18 +59,32 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
 
     pFrameCounter = 0; % count number of p frames since the last intra frame. This is tracked to ensure valid number of reference frames.
     
-    RCthreshold_bit = 100000000000000000;
+    RCthreshold_bit = getSceneChangeThreshold(QP)
     pass = 1;
     frameIdx = 1;
     over_threshold = false;
     total_per_row_qp = [];
     pass_1_motion_vectors = []
+    total_bits_used = 0;
+    total_bits_sequence = 0;
+    total_bits_used_sequence = 0;
     while frameIdx <= numFrames
-    
         
+        
+        if(RCflag > 0 &&frameIdx > 2)
+            total_bits_sequence = total_bits_sequence + per_frame_budget; 
+            total_bits_used_sequence = total_bits_used_sequence + total_bits_used;
+            if(total_bits_used_sequence<total_bits_sequence)
+                bits_remaining = per_frame_budget + (total_bits_sequence - total_bits_used_sequence);
+            else
+                bits_remaining = per_frame_budget - (total_bits_used_sequence - total_bits_sequence);
+            end
+            per_block_row_budget = get_row_budget_base_on_frame(bits_remaining,width,height,blockSize);
+            
+        end
         
         fprintf('Processed frame %d pass %d\n', frameIdx,pass) % %d for integers
-        if(RCflag > 1 && pass == 1) || RCflag ~= 2
+        if(RCflag > 1 && pass == 1) || RCflag < 2 
             currentFrame = fread(fid,[width, height], 'uint8')';
         end
         %determin the frame type
@@ -84,6 +101,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         else
             isIFrame = true;
             over_threshold = false;
+            
         end
         
         %isIFrame = false;
@@ -141,9 +159,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             
             
              if(RCflag > 1 && pass == 1) 
-                % if(total_bits_used > RCthreshold_bit)
-                %     over_threshold = true;
-                % end
+                
                 total_per_row_perc = calcRowPercent(total_per_row_bits_used,total_bits_used);
                 total_per_row_qp = findQP(total_per_row_perc,QP);
                 %total_per_row_qp = total_per_row_qp - 3;
@@ -152,7 +168,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             end
 
 
-            if(RCflag > 1 && pass == 2) || RCflag ~= 2
+            if(RCflag > 1 && pass == 2) || RCflag < 2 
                 save(sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx), 'encodedMDiff');
                 residualFile = sprintf('../Outputs/quantizedResiduals_frame_%d.mat', frameIdx);
                 save(residualFile, 'encodedResidues');
@@ -181,8 +197,13 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             if(RCflag > 1 && pass == 1) 
                 total_per_row_perc = calcRowPercent(total_per_row_bits_used,total_bits_used);
                 total_per_row_qp = findQP(total_per_row_perc,QP);
-                if(total_bits_used > RCthreshold_bit)
+                total_bits_per_block_used = total_bits_used/((width * height) / (blockSize *2 * blockSize * 2))
+                if(frameIdx == 8)
+                    a = 1;
+                end
+                if(total_bits_per_block_used > RCthreshold_bit)
                     over_threshold = true;
+                    
                     %total_per_row_qp = total_per_row_qp - 3;
                 end
                 
@@ -193,7 +214,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
 
 
             
-            if(RCflag > 1 && pass == 2) || RCflag ~= 2
+            if(RCflag > 1 && pass == 2) || RCflag < 2
 
                 motionVectorFile = sprintf('../Outputs/MDiff_frame_%d.mat', frameIdx);
                 save(motionVectorFile, 'encodedMDiff');
@@ -203,7 +224,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
         end
 
 
-        if(RCflag > 1 && pass == 2) || RCflag ~= 2
+        if(RCflag > 1 && pass == 2) || RCflag < 2 
 
             reconstructedFrame = double(predictedFrame) + double(compresiduals);
             reconstructedFrame = double(max(0, min(255, reconstructedFrame)));
@@ -222,7 +243,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
             pass = 3;
         end
 
-        if RCflag ~= 2
+        if RCflag < 2 
             frameIdx = frameIdx + 1;
         
         end
@@ -238,4 +259,36 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
     fclose(fid);
     fclose(yuvFile);
 
+end
+
+
+function threashold = getSceneChangeThreshold(QP)
+    switch QP
+        case 0
+            threashold = 1200;
+        case 1
+            threashold = 1100;
+        case 2
+            threashold = 830;
+        case 3
+            threashold = 650;
+        case 4
+            threashold = 450;
+        case 5
+            threashold = 310;
+        case 6
+            threashold = 190;
+        case 7
+            threashold = 110;
+        case 8
+            threashold = 50;
+        case 9
+            threashold = 25;
+        case 10
+            threashold = 15;
+        case 11
+            threashold = 5;
+        otherwise
+            error("unknown QP!");
+    end
 end

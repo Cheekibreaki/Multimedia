@@ -1,4 +1,4 @@
-function avgPsnr = calculatePSNR(decodedFile, originalFile, width, height, numFrames)
+function [avgPsnr,psnrValues] = calculatePSNR(decodedFile, originalFile, width, height, numFrames)
     % Parameters:
     %   originalFile - Path to the original Y only file
     %   decodedFile  - Path to the decoded Y only file
@@ -11,7 +11,7 @@ function avgPsnr = calculatePSNR(decodedFile, originalFile, width, height, numFr
     fidDecoded = fopen(decodedFile, 'r');
     
     totalPsnr = 0;
-    
+    psnrValues = [];
     % Iterate through each frame to compare
     for frameIdx = 1:numFrames
         % Read frames
@@ -32,6 +32,7 @@ function avgPsnr = calculatePSNR(decodedFile, originalFile, width, height, numFr
         
         % Accumulate PSNR
         totalPsnr = totalPsnr + psnrValue;
+        psnrValues = [psnrValues,psnrValue];
     end
     
     % Average PSNR over all frames
