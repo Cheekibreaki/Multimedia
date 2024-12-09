@@ -80,7 +80,7 @@ function encoder(referenceFile, paddedOutputFile, numFrames, width, height, bloc
                 bits_remaining = per_frame_budget - (total_bits_used_sequence - total_bits_sequence);
             end
             per_block_row_budget = get_row_budget_base_on_frame(bits_remaining,width,height,blockSize);
-            
+            QP = findCorrectQP(per_block_row_budget, p_bitCountPerRow);
         end
         
         fprintf('Processed frame %d pass %d\n', frameIdx,pass) % %d for integers
